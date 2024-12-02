@@ -7,21 +7,26 @@ namespace FiveLetters
         Presense
     }
 
-    readonly record struct PositionState {
+    readonly record struct PositionState
+    {
         internal required Letter Letter { get; init; }
         internal required bool Interpretation { get; init; }
         internal bool MatchLetter(Letter letter) => letter == Letter == Interpretation;
     }
 
-    struct State
+    readonly struct State
     {
-        private LetterState[] _LetterStates;
+        private readonly LetterState[] _LetterStates;
 
-        private PositionState?[] _PositionStates;
+        private readonly PositionState?[] _PositionStates;
 
         internal State(Word word, Word guess)
         {
-            _LetterStates = new LetterState[Word.AlphabetLetterCount];
+            if (guess.AlphabetLetterCount != word.AlphabetLetterCount)
+            {
+                throw new InvalidOperationException("An attempt to create a state from different alphabet length.");
+            }
+            _LetterStates = new LetterState[word.AlphabetLetterCount];
             _PositionStates = new PositionState?[Word.WordLetterCount];
 
             foreach (Letter letter in guess)
@@ -52,7 +57,11 @@ namespace FiveLetters
 
         internal readonly bool MatchWord(Word word)
         {
-            bool[] metChars = new bool[Word.AlphabetLetterCount];
+            if (word.AlphabetLetterCount != _LetterStates.Length)
+            {
+                return false;
+            }
+            bool[] metChars = new bool[_LetterStates.Length];
             int countPresence = 0;
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
@@ -61,7 +70,8 @@ namespace FiveLetters
                 {
                     return false;
                 }
-                if (!(_PositionStates[i]?.MatchLetter(letter) ?? true)) {
+                if (!(_PositionStates[i]?.MatchLetter(letter) ?? true))
+                {
                     return false;
                 }
                 if (!metChars[letter] && _LetterStates[letter] == LetterState.Presense)
@@ -72,7 +82,7 @@ namespace FiveLetters
             }
 
             int stateCountPresence = 0;
-            for (int i = 0; i < Word.AlphabetLetterCount; ++i)
+            for (int i = 0; i < _LetterStates.Length; ++i)
             {
                 if (_LetterStates[i] == LetterState.Presense)
                 {
@@ -90,7 +100,7 @@ namespace FiveLetters
                     "The mask must contain exactly {0} characters.", Word.WordLetterCount));
             }
 
-            _LetterStates = new LetterState[Word.AlphabetLetterCount];
+            _LetterStates = new LetterState[guess.AlphabetLetterCount];
             _PositionStates = new PositionState?[Word.WordLetterCount];
 
             for (int i = 0; i < Word.WordLetterCount; ++i)
@@ -112,20 +122,20 @@ namespace FiveLetters
                         {
                             _LetterStates[letter] = LetterState.Absense;
                         }
-                        _PositionStates[i] =  new PositionState { Letter = letter, Interpretation = false};
+                        _PositionStates[i] = new PositionState { Letter = letter, Interpretation = false };
                         break;
                     case 'w':
                         _LetterStates[letter] = LetterState.Presense;
-                        _PositionStates[i] =  new PositionState { Letter = letter, Interpretation = false};
+                        _PositionStates[i] = new PositionState { Letter = letter, Interpretation = false };
                         break;
                     case 'y':
                         _LetterStates[letter] = LetterState.Presense;
-                        _PositionStates[i] =  new PositionState { Letter = letter, Interpretation = true };
+                        _PositionStates[i] = new PositionState { Letter = letter, Interpretation = true };
                         break;
                     default:
                         throw new ArgumentException(string.Format(
-                            "Value `{0}` contains at least one inacceptable " + 
-                            "character. Expecting only the following characters: " + 
+                            "Value `{0}` contains at least one inacceptable " +
+                            "character. Expecting only the following characters: " +
                             "`g`, `w`, `y`.", value));
                 }
             }

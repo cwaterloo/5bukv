@@ -7,6 +7,20 @@ namespace FiveLetters
     {
         internal readonly record struct LetterAndColors(Letter Letter, ConsoleColor ForegroundColor, ConsoleColor BackgroundColor);
 
+        static Alphabet GetAlphabet(IReadOnlyList<string> words)
+        {
+            HashSet<char> chars = [];
+            foreach (string word in words)
+            {
+                foreach (char letter in word)
+                {
+                    chars.Add(letter);
+                }
+            }
+
+            return new(chars.Order().ToList().AsReadOnly());
+        }
+
         static List<string> LoadWords(string filename)
         {
             HashSet<string> words = [];
@@ -47,15 +61,15 @@ namespace FiveLetters
             return applicableWordsCount;
         }
 
-        static List<Word> GetCandidates(List<Word> words, List<Word> globalWords)
+        static Word GetCandidate(List<Word> words, List<Word> globalWords)
         {
             if (words.Count == 1)
             {
-                return words;
+                return words[0];
             }
 
             int minApplicableWordsCount = words.Count * words.Count;
-            List<Word> candidatesMin = [];
+            Word? candidateMin = null;
             foreach (Word guess in globalWords)
             {
                 int applicableWordsCount = 0;
@@ -70,17 +84,17 @@ namespace FiveLetters
                 }
                 if (applicableWordsCount < minApplicableWordsCount)
                 {
-                    candidatesMin.Clear();
+                    candidateMin = guess;
                     minApplicableWordsCount = applicableWordsCount;
-                }
-
-                if (minApplicableWordsCount == applicableWordsCount)
-                {
-                    candidatesMin.Add(guess);
                 }
             }
 
-            return candidatesMin;
+            if (candidateMin.HasValue)
+            {
+                return candidateMin.Value;
+            }
+
+            throw new InvalidOperationException("No more words left.");
         }
 
         static void GetMetric(List<Word> words, Word guess)
@@ -118,8 +132,7 @@ namespace FiveLetters
             {
                 State currentState = new(hiddenWord, guess);
                 words = FilterWords(words, currentState);
-                List<Word> candidates = GetCandidates(words, globalWords);
-                guess = candidates[0];
+                guess = GetCandidate(words, globalWords);
                 ++attemptCount;
             }
             return attemptCount;
@@ -129,9 +142,9 @@ namespace FiveLetters
         {
             Console.WriteLine("Getting first candidate...");
             Stopwatch stopwatch = Stopwatch.StartNew();
-            List<Word> candidates = GetCandidates(words, words);
+            Word candidate = GetCandidate(words, words);
             stopwatch.Stop();
-            Console.WriteLine("Candidates: {0}.", string.Join(", ", candidates));
+            Console.WriteLine("Candidate: {0}.", candidate);
             Console.WriteLine("Time Elapsed: {0}.", stopwatch.Elapsed);
         }
 
@@ -191,7 +204,7 @@ namespace FiveLetters
         {
             Console.Write("Entered state: ");
             foreach (LetterAndColors letterAndColors in guess.Zip(mask)
-                .Select(letterCharTuple => GetCharColor(letterCharTuple.Item1, letterCharTuple.Item2)))
+                .Select(letterCharTuple => GetCharColor(letterCharTuple.First, letterCharTuple.Second)))
             {
                 Console.ForegroundColor = letterAndColors.ForegroundColor;
                 Console.BackgroundColor = letterAndColors.BackgroundColor;
@@ -252,14 +265,16 @@ namespace FiveLetters
                         "mask was entered incorrectly.");
                     break;
                 }
-                List<Word> candidates = GetCandidates(words, globalWords);
-                if (candidates.Count <= 0)
+                try
                 {
-                    Console.WriteLine("No candidates left. It means that one of the previous " +
-                        "mask was entered incorrectly.");
+                    guess = GetCandidate(words, globalWords);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Console.WriteLine(string.Format("No candidates left. It means that one of the previous " +
+                        "mask was entered incorrectly. Exception: {0}", ex));
                     break;
                 }
-                guess = candidates[0];
             } while (attempt < 6);
         }
 
@@ -313,7 +328,10 @@ namespace FiveLetters
             }
 
             List<string> allWords = LoadWords(args[1]);
-            List<Word> fiveLetterWords = allWords.Select(word => new Word(word)).ToList();
+            Alphabet alphabet = GetAlphabet(allWords);
+            Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.IndexToChar.Count);
+            Console.WriteLine("Alphabet: {0}.", alphabet);
+            List<Word> fiveLetterWords = allWords.Select(word => new Word(word, alphabet)).ToList();
             Console.WriteLine(string.Format("Loaded {0} words.", fiveLetterWords.Count));
             if (fiveLetterWords.Count <= 0)
             {
@@ -327,13 +345,13 @@ namespace FiveLetters
                     GetFirstCandidate(fiveLetterWords);
                     break;
                 case "stats":
-                    CollectStats(fiveLetterWords, new Word(Contains(allWords, args[2])));
+                    CollectStats(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet));
                     break;
                 case "interactive":
-                    PlayInteractiveGame(fiveLetterWords, new Word(Contains(allWords, args[2])));
+                    PlayInteractiveGame(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet));
                     break;
                 case "metric":
-                    GetMetric(fiveLetterWords, new Word(Contains(allWords, args[2])));
+                    GetMetric(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet));
                     break;
                 default:
                     ShowHelpAndTerminate();

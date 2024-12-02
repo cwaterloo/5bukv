@@ -6,9 +6,10 @@ namespace FiveLetters
     struct Word : IEnumerable<Letter>, IEquatable<Word>
     {
         internal const int WordLetterCount = 5;
-        internal const int AlphabetLetterCount = 32;
 
         private readonly Letter[] _Letters;
+
+        internal readonly int AlphabetLetterCount => _Alphabet.IndexToChar.Count;
 
         internal readonly Letter this[int index]
         {
@@ -31,8 +32,10 @@ namespace FiveLetters
 
         public readonly bool Equals(Word other)
         {
-            for (int i = 0; i < WordLetterCount; ++i) {
-                if (_Letters[i] != other._Letters[i]) {
+            for (int i = 0; i < WordLetterCount; ++i)
+            {
+                if (_Letters[i] != other._Letters[i])
+                {
                     return false;
                 }
             }
@@ -40,24 +43,27 @@ namespace FiveLetters
             return true;
         }
 
-        public static bool operator==(Word left, Word right) => left.Equals(right);
+        public static bool operator ==(Word left, Word right) => left.Equals(right);
 
-        public static bool operator!=(Word left, Word right) => !left.Equals(right);
+        public static bool operator !=(Word left, Word right) => !left.Equals(right);
 
-        internal Word(string wordOrNull)
+        private readonly Alphabet _Alphabet;
+
+        internal Word(string wordOrNull, Alphabet alphabet)
         {
             string word = wordOrNull ?? "";
             if (word.Length != WordLetterCount)
             {
                 throw new ArgumentNullException(string.Format(
-                    "Only {0} letter words are acceptable. The " + 
+                    "Only {0} letter words are acceptable. The " +
                     "length of the word is {1}.", WordLetterCount, word.Length));
             }
             _Letters = new Letter[WordLetterCount];
             for (int i = 0; i < WordLetterCount; ++i)
             {
-                _Letters[i] = new Letter(word[i]);
+                _Letters[i] = new Letter(word[i], alphabet);
             }
+            _Alphabet = alphabet;
         }
 
         public override readonly bool Equals(object? obj) => obj is Word word && Equals(word);

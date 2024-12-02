@@ -2,19 +2,20 @@ namespace FiveLetters
 {
     readonly struct Letter : IEquatable<Letter>
     {
-        internal Letter(char value)
+        internal Letter(char value, Alphabet alphabet)
         {
-            if (value < 'а' || value > 'я')
+            if (!alphabet.CharToIndex.ContainsKey(value))
             {
                 throw new ArgumentException(string.Format(
-                    "The character `{0}` is not a Russian lower case letter.", value));
+                    "Provided alphabet has no character `{0}`.", value));
             }
-            Value = value - 'а';
+            Value = alphabet.CharToIndex[value];
+            _Alphabet = alphabet;
         }
 
-        internal readonly char ToChar() => (char)(Value + 'а');
+        internal readonly char ToChar() => _Alphabet.IndexToChar[Value];
 
-        public readonly bool Equals(Letter other) => Value == other.Value;        
+        public readonly bool Equals(Letter other) => Value == other.Value;
 
         public static bool operator ==(Letter left, Letter right) => left.Equals(right);
 
@@ -23,6 +24,8 @@ namespace FiveLetters
         public static implicit operator int(Letter letter) => letter.Value;
 
         internal int Value { get; init; }
+
+        private readonly Alphabet _Alphabet;
 
         public override readonly bool Equals(object? obj) => obj is Letter letter && Equals(letter);
 
