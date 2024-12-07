@@ -1,95 +1,156 @@
 namespace FiveLetters
 {
-    enum LetterState
-    {
-        Unknown,
-        Absense,
-        Presense
-    }
-
-    readonly record struct PositionState
+    readonly record struct Position : IComparable<Position>
     {
         internal required Letter Letter { get; init; }
-        internal required bool Interpretation { get; init; }
-        internal bool MatchLetter(Letter letter) => letter == Letter == Interpretation;
+        internal required int Index { get; init; }
+        public int CompareTo(Position other)
+        {
+            int result = Letter.Value.CompareTo(other.Letter.Value);
+            return result == 0 ? Index.CompareTo(other.Index) : result;
+        }
+    }
+
+    readonly record struct CorrectnessState
+    {
+        internal required Position Position { get; init; }
+        internal required bool Correct { get; init; }
+    }
+
+    record struct PresenceState : IComparable<PresenceState>
+    {
+        internal required Position Position { get; init; }
+        internal required bool Present { get; set; }
+
+        public readonly int CompareTo(PresenceState other) => Position.CompareTo(other.Position);
     }
 
     readonly struct State
     {
-        private readonly LetterState[] _LetterStates;
 
-        private readonly PositionState?[] _PositionStates;
+        private readonly PresenceState[] _PresenceStates;
+
+        private readonly CorrectnessState[] _CorrectnessStates;
 
         internal State(Word word, Word guess)
         {
-            if (guess.AlphabetLetterCount != word.AlphabetLetterCount)
-            {
-                throw new InvalidOperationException("An attempt to create a state from different alphabet length.");
-            }
-            _LetterStates = new LetterState[word.AlphabetLetterCount];
-            _PositionStates = new PositionState?[Word.WordLetterCount];
-
-            foreach (Letter letter in guess)
-            {
-                _LetterStates[letter] = LetterState.Absense;
-            }
-
-            foreach (Letter letter in word)
-            {
-                if (_LetterStates[letter] == LetterState.Absense)
-                {
-                    _LetterStates[letter] = LetterState.Presense;
-                }
-            }
-
+            _CorrectnessStates = new CorrectnessState[Word.WordLetterCount];
+            _PresenceStates = new PresenceState[Word.WordLetterCount];
+            Position[] positions = new Position[Word.WordLetterCount];
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
-                if (word[i] == guess[i])
+                _CorrectnessStates[i] = new CorrectnessState
                 {
-                    _PositionStates[i] = new PositionState { Letter = guess[i], Interpretation = true };
-                }
-                else if (_LetterStates[guess[i]] == LetterState.Presense)
+                    Position = new Position { Letter = guess[i], Index = i },
+                    Correct = guess[i] == word[i]
+                };
+                _PresenceStates[i] = new PresenceState { Position = _CorrectnessStates[i].Position, Present = false };
+                positions[i] = new Position { Letter = word[i], Index = i };
+            }
+
+            Array.Sort(_PresenceStates);
+            Array.Sort(positions);
+
+            int wordCarriage = 0; // positions
+            int guessCarriage = 0; // _PresenceStates
+
+            while (wordCarriage < positions.Length && guessCarriage < _PresenceStates.Length)
+            {
+                if (_CorrectnessStates[_PresenceStates[guessCarriage].Position.Index].Correct)
                 {
-                    _PositionStates[i] = new PositionState { Letter = guess[i], Interpretation = false };
+                    ++guessCarriage;
+                    continue;
                 }
+
+                if (_CorrectnessStates[positions[wordCarriage].Index].Correct)
+                {
+                    ++wordCarriage;
+                    continue;
+                }
+
+                if (_PresenceStates[guessCarriage].Position.Letter.Value < positions[wordCarriage].Letter.Value)
+                {
+                    ++guessCarriage;
+                    continue;
+                }
+
+                if (positions[wordCarriage].Letter.Value < _PresenceStates[guessCarriage].Position.Letter.Value)
+                {
+                    ++wordCarriage;
+                    continue;
+                }
+
+                _PresenceStates[guessCarriage].Present = true;
+                ++guessCarriage;
+                ++wordCarriage;
             }
         }
 
         internal readonly bool MatchWord(Word word)
         {
-            if (word.AlphabetLetterCount != _LetterStates.Length)
-            {
-                return false;
-            }
-            bool[] metChars = new bool[_LetterStates.Length];
-            int countPresence = 0;
+            Position[] positions = new Position[Word.WordLetterCount];
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
-                Letter letter = word[i];
-                if (_LetterStates[letter] == LetterState.Absense)
+                if (_CorrectnessStates[i].Correct == (word[i] != _CorrectnessStates[i].Position.Letter))
                 {
                     return false;
                 }
-                if (!(_PositionStates[i]?.MatchLetter(letter) ?? true))
-                {
-                    return false;
-                }
-                if (!metChars[letter] && _LetterStates[letter] == LetterState.Presense)
-                {
-                    metChars[letter] = true;
-                    ++countPresence;
-                }
+                positions[i] = new Position { Letter = word[i], Index = i };
             }
 
-            int stateCountPresence = 0;
-            for (int i = 0; i < _LetterStates.Length; ++i)
+            Array.Sort(positions);
+
+            int wordCarriage = 0; // positions
+            int stateCarriage = 0; // _PresenceStates
+
+            while (wordCarriage < positions.Length && stateCarriage < _PresenceStates.Length)
             {
-                if (_LetterStates[i] == LetterState.Presense)
+                if (_CorrectnessStates[_PresenceStates[stateCarriage].Position.Index].Correct)
                 {
-                    ++stateCountPresence;
+                    ++stateCarriage;
+                    continue;
                 }
+
+                if (_CorrectnessStates[positions[wordCarriage].Index].Correct)
+                {
+                    ++wordCarriage;
+                    continue;
+                }
+
+                if (positions[wordCarriage].Letter.Value < _PresenceStates[stateCarriage].Position.Letter.Value)
+                {
+                    ++wordCarriage;
+                    continue;
+                }
+
+                if (_PresenceStates[stateCarriage].Position.Letter.Value < positions[wordCarriage].Letter.Value)
+                {
+                    if (_PresenceStates[stateCarriage].Present)
+                    {
+                        return false;
+                    }
+                    ++stateCarriage;
+                    continue;
+                }
+
+                if (!_PresenceStates[stateCarriage].Present)
+                {
+                    return false;
+                }
+                ++wordCarriage;
+                ++stateCarriage;
             }
-            return stateCountPresence <= countPresence;
+
+            while (stateCarriage < _PresenceStates.Length)
+            {
+                if (_PresenceStates[stateCarriage].Present)
+                {
+                    return false;
+                }
+                ++stateCarriage;
+            }
+
+            return true;
         }
 
         internal State(string value, Word guess)
@@ -100,8 +161,8 @@ namespace FiveLetters
                     "The mask must contain exactly {0} characters.", Word.WordLetterCount));
             }
 
-            _LetterStates = new LetterState[guess.AlphabetLetterCount];
-            _PositionStates = new PositionState?[Word.WordLetterCount];
+            _CorrectnessStates = new CorrectnessState[Word.WordLetterCount];
+            _PresenceStates = new PresenceState[Word.WordLetterCount];
 
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
@@ -109,28 +170,16 @@ namespace FiveLetters
                 switch (value[i])
                 {
                     case 'g':
-                        // This is the case when game actually reveals more info than
-                        // this model. We pretend that we received 'w' here and implement
-                        // the same behavior. It makes the model less restrictive.
-                        //
-                        // Example: the hidden word is 'канон'.
-                        //   1. 'катер' ('yyggg')
-                        //   2. 'калан' ('yyggy', but the model yields 'yygwy')
-                        //   3. 'камин' (yyggy)
-                        //   4. 'канон' (yyyyy)
-                        if (_LetterStates[letter] != LetterState.Presense)
-                        {
-                            _LetterStates[letter] = LetterState.Absense;
-                        }
-                        _PositionStates[i] = new PositionState { Letter = letter, Interpretation = false };
+                        _CorrectnessStates[i] = new CorrectnessState { Position = new() { Index = i, Letter = letter }, Correct = false };
+                        _PresenceStates[i] = new PresenceState { Position = _CorrectnessStates[i].Position, Present = false };
                         break;
                     case 'w':
-                        _LetterStates[letter] = LetterState.Presense;
-                        _PositionStates[i] = new PositionState { Letter = letter, Interpretation = false };
+                        _CorrectnessStates[i] = new CorrectnessState { Position = new() { Index = i, Letter = letter }, Correct = false };
+                        _PresenceStates[i] = new PresenceState { Position = _CorrectnessStates[i].Position, Present = true };
                         break;
                     case 'y':
-                        _LetterStates[letter] = LetterState.Presense;
-                        _PositionStates[i] = new PositionState { Letter = letter, Interpretation = true };
+                        _CorrectnessStates[i] = new CorrectnessState { Position = new() { Index = i, Letter = letter }, Correct = true };
+                        _PresenceStates[i] = new PresenceState { Position = _CorrectnessStates[i].Position, Present = false };
                         break;
                     default:
                         throw new ArgumentException(string.Format(
@@ -139,6 +188,8 @@ namespace FiveLetters
                             "`g`, `w`, `y`.", value));
                 }
             }
+
+            Array.Sort(_PresenceStates);
         }
     }
 }
