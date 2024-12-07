@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace FiveLetters
 {
     readonly record struct Position : IComparable<Position>
@@ -8,6 +10,11 @@ namespace FiveLetters
         {
             int result = Letter.Value.CompareTo(other.Letter.Value);
             return result == 0 ? Index.CompareTo(other.Index) : result;
+        }
+
+        public override string ToString()
+        {
+            return string.Concat(Index.ToString(), ' ', Letter.ToChar());
         }
     }
 
@@ -84,6 +91,32 @@ namespace FiveLetters
                 ++guessCarriage;
                 ++wordCarriage;
             }
+        }
+
+        public override string ToString()
+        {
+            StringBuilder stringBuilder = new();
+            for (int i = 0; i < _CorrectnessStates.Length; ++i)
+            {
+                stringBuilder.Append(_CorrectnessStates[i].Correct ? 'C' : 'I');
+            }
+            stringBuilder.Append(' ');
+            for (int i = 0; i < _PresenceStates.Length; ++i)
+            {
+                stringBuilder.Append(_PresenceStates[i].Position.Index);
+            }
+            stringBuilder.Append(' ');
+            for (int i = 0; i < _PresenceStates.Length; ++i)
+            {
+                stringBuilder.Append(_PresenceStates[i].Position.Letter.ToChar());
+            }
+            stringBuilder.Append(' ');
+            for (int i = 0; i < _PresenceStates.Length; ++i)
+            {
+                stringBuilder.Append(_PresenceStates[i].Present ? 'P' : 'A');
+            }
+
+            return stringBuilder.ToString();
         }
 
         internal readonly bool MatchWord(Word word)
