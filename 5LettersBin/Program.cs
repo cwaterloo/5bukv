@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 
 namespace FiveLetters
@@ -68,14 +69,15 @@ namespace FiveLetters
                 return words[0];
             }
 
+            Stopwatch stopwatch = Stopwatch.StartNew();
             int minApplicableWordsCount = words.Count * words.Count;
             Word? candidateMin = null;
-            foreach (Word guess in globalWords)
+            for (int i = 0; i < globalWords.Count; ++i)
             {
                 int applicableWordsCount = 0;
                 foreach (Word word in words)
                 {
-                    applicableWordsCount = GetMatchWordCount(words, word, guess,
+                    applicableWordsCount = GetMatchWordCount(words, word, globalWords[i],
                         applicableWordsCount, minApplicableWordsCount);
                     if (applicableWordsCount > minApplicableWordsCount)
                     {
@@ -84,10 +86,20 @@ namespace FiveLetters
                 }
                 if (applicableWordsCount < minApplicableWordsCount)
                 {
-                    candidateMin = guess;
+                    candidateMin = globalWords[i];
                     minApplicableWordsCount = applicableWordsCount;
                 }
+
+                long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+                if (elapsedMilliseconds > 60000)
+                {
+                    Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                        "GetCandidate ETA: {0}",
+                        DateTime.Now.AddMilliseconds(elapsedMilliseconds * (globalWords.Count - i - 1) / (i + 1))));
+                }
             }
+
+            stopwatch.Stop();
 
             if (candidateMin.HasValue)
             {
@@ -169,6 +181,13 @@ namespace FiveLetters
                 if (attempt_count > maxAttempts)
                 {
                     maxAttempts = attempt_count;
+                }
+                long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+                if (elapsedMilliseconds > 60000)
+                {
+                    Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                        "CollectStats ETA: {0}",
+                        DateTime.Now.AddMilliseconds(elapsedMilliseconds * (words.Count - i - 1) / (i + 1))));
                 }
             }
             stopwatch.Stop();
