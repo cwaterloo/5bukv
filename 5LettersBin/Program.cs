@@ -43,23 +43,24 @@ namespace FiveLetters
             return [.. words.Order()];
         }
 
-        static int GetMatchWordCount(List<Word> words, Word word, Word guess,
-            int currentApplicableWordCount, int observedMinApplicableWordCount)
+        static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
         {
-            int applicableWordsCount = currentApplicableWordCount;
+            long metric = current;
+            long n = 0;
             State state = new(word, guess);
             foreach (Word wordToCheck in words)
             {
                 if (state.MatchWord(wordToCheck))
                 {
-                    ++applicableWordsCount;
-                    if (applicableWordsCount > observedMinApplicableWordCount)
+                    metric += (n << 1) + 1;
+                    ++n;
+                    if (metric > observedMin)
                     {
-                        return applicableWordsCount;
+                        return metric;
                     }
                 }
             }
-            return applicableWordsCount;
+            return metric;
         }
 
         static Word GetCandidate(List<Word> words, List<Word> globalWords)
@@ -70,24 +71,23 @@ namespace FiveLetters
             }
 
             Stopwatch stopwatch = Stopwatch.StartNew();
-            int minApplicableWordsCount = words.Count * words.Count;
+            long minMetric = (long)words.Count * words.Count * words.Count * words.Count;
             Word? candidateMin = null;
             for (int i = 0; i < globalWords.Count; ++i)
             {
-                int applicableWordsCount = 0;
+                long currentMetric = 0;
                 foreach (Word word in words)
                 {
-                    applicableWordsCount = GetMatchWordCount(words, word, globalWords[i],
-                        applicableWordsCount, minApplicableWordsCount);
-                    if (applicableWordsCount > minApplicableWordsCount)
+                    currentMetric = GetMatchWordCount(words, word, globalWords[i], currentMetric, minMetric);
+                    if (currentMetric > minMetric)
                     {
                         break;
                     }
                 }
-                if (applicableWordsCount < minApplicableWordsCount)
+                if (currentMetric < minMetric)
                 {
                     candidateMin = globalWords[i];
-                    minApplicableWordsCount = applicableWordsCount;
+                    minMetric = currentMetric;
                 }
 
                 long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
@@ -111,14 +111,14 @@ namespace FiveLetters
 
         static void GetMetric(List<Word> words, Word guess)
         {
-            int applicableWordsCount = 0;
+            long metric = 0;
             foreach (Word word in words)
             {
-                applicableWordsCount = GetMatchWordCount(words, word, guess,
-                    applicableWordsCount, words.Count * words.Count);
+                metric = GetMatchWordCount(words, word, guess,
+                    metric, (long)words.Count * words.Count * words.Count * words.Count);
             }
             Console.WriteLine("Word: {0}, Metric {1}. Mean number of words: {2}.", guess,
-                applicableWordsCount, Math.Round(applicableWordsCount / (double)words.Count));
+                metric, Math.Round(metric / (double)words.Count));
         }
 
         static List<Word> FilterWords(List<Word> words, State state)
@@ -142,6 +142,9 @@ namespace FiveLetters
             int attemptCount = 1;
             while (guess != hiddenWord)
             {
+                if (attemptCount == 6 && words.Count > 1) {
+                    Console.Error.WriteLine("Number of words left at attempt 6: {0}", words.Count);
+                }
                 State currentState = new(hiddenWord, guess);
                 words = FilterWords(words, currentState);
                 guess = GetCandidate(words, globalWords);
