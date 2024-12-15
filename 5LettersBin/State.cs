@@ -32,7 +32,7 @@ namespace FiveLetters
         public readonly int CompareTo(PresenceState other) => Position.CompareTo(other.Position);
     }
 
-    readonly struct State
+    readonly struct State : IState
     {
 
         private readonly PresenceState[] _PresenceStates;
@@ -119,7 +119,7 @@ namespace FiveLetters
             return stringBuilder.ToString();
         }
 
-        internal readonly bool MatchWord(Word word)
+        public readonly bool MatchWord(Word word)
         {
             Position[] positions = new Position[Word.WordLetterCount];
             for (int i = 0; i < Word.WordLetterCount; ++i)

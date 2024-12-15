@@ -47,7 +47,7 @@ namespace FiveLetters
         {
             long metric = current;
             long n = 0;
-            State state = new(word, guess);
+            IState state = MakeState(word, guess);
             foreach (Word wordToCheck in words)
             {
                 if (state.MatchWord(wordToCheck))
@@ -121,7 +121,7 @@ namespace FiveLetters
                 metric, Math.Round(metric / (double)words.Count));
         }
 
-        static List<Word> FilterWords(List<Word> words, State state)
+        static List<Word> FilterWords(List<Word> words, IState state)
         {
             List<Word> result = [];
             foreach (Word word in words)
@@ -142,10 +142,11 @@ namespace FiveLetters
             int attemptCount = 1;
             while (guess != hiddenWord)
             {
-                if (attemptCount == 6 && words.Count > 1) {
+                if (attemptCount == 6 && words.Count > 1)
+                {
                     Console.Error.WriteLine("Number of words left at attempt 6: {0}", words.Count);
                 }
-                State currentState = new(hiddenWord, guess);
+                IState currentState = MakeState(hiddenWord, guess);
                 words = FilterWords(words, currentState);
                 guess = GetCandidate(words, globalWords);
                 ++attemptCount;
@@ -236,7 +237,7 @@ namespace FiveLetters
             Console.WriteLine(".");
         }
 
-        static State? GetMask(Word guess)
+        static IState? GetMask(Word guess)
         {
             do
             {
@@ -245,7 +246,7 @@ namespace FiveLetters
                 string enteredValue = Console.ReadLine() ?? "";
                 try
                 {
-                    State? state = enteredValue == "yyyyy" ? null : new(enteredValue, guess);
+                    IState? state = enteredValue == "yyyyy" ? null : MakeState(enteredValue, guess);
                     PrintEnteredState(enteredValue, guess);
                     Console.WriteLine();
                     return state;
@@ -275,12 +276,12 @@ namespace FiveLetters
                 Console.Write(guess);
                 Console.ResetColor();
                 Console.WriteLine(".");
-                State? state = GetMask(guess);
+                IState? state = GetMask(guess);
                 if (state == null)
                 {
                     break;
                 }
-                words = FilterWords(words, state.Value);
+                words = FilterWords(words, state);
                 if (words.Count <= 0)
                 {
                     Console.WriteLine("No words left. It means that one of the previous " +
@@ -298,6 +299,16 @@ namespace FiveLetters
                     break;
                 }
             } while (attempt < 6);
+        }
+
+        private static IState MakeState(Word word, Word guess)
+        {
+            return new State(word, guess);
+        }
+
+        private static IState MakeState(string value, Word guess)
+        {
+            return new State(value, guess);
         }
 
         static string Contains(List<string> words, string word)
