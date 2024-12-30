@@ -47,12 +47,14 @@ namespace FiveLetters
         {
             long metric = current;
             long n = 0;
+            long k = 0;
             IState state = MakeState(word, guess);
             foreach (Word wordToCheck in words)
             {
                 if (state.MatchWord(wordToCheck))
                 {
-                    metric += (n << 1) + 1;
+                    metric += 3 * (n + k) + 1;
+                    k += (n << 1) + 1;
                     ++n;
                     if (metric > observedMin)
                     {
@@ -71,7 +73,7 @@ namespace FiveLetters
             }
 
             Stopwatch stopwatch = Stopwatch.StartNew();
-            long minMetric = (long)words.Count * words.Count * words.Count * words.Count;
+            long minMetric = long.MaxValue;
             Word? candidateMin = null;
             for (int i = 0; i < globalWords.Count; ++i)
             {
@@ -303,12 +305,12 @@ namespace FiveLetters
 
         private static IState MakeState(Word word, Word guess)
         {
-            return new OldState(word, guess);
+            return new State(word, guess);
         }
 
         private static IState MakeState(string value, Word guess)
         {
-            return new OldState(value, guess);
+            return new State(value, guess);
         }
 
         static string Contains(List<string> words, string word)
