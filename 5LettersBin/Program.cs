@@ -305,12 +305,12 @@ namespace FiveLetters
 
         private static IState MakeState(Word word, Word guess)
         {
-            return new State(word, guess);
+            return new OldState(word, guess);
         }
 
         private static IState MakeState(string value, Word guess)
         {
-            return new State(value, guess);
+            return new OldState(value, guess);
         }
 
         static string Contains(List<string> words, string word)
