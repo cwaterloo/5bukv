@@ -303,6 +303,10 @@ namespace FiveLetters
             } while (attempt < 6);
         }
 
+        static void MakeGraph(List<Word> globalWords, Word firstGuess, string output_filename) {
+
+        }
+
         private static IState MakeState(Word word, Word guess)
         {
             return new OldState(word, guess);
@@ -357,7 +361,7 @@ namespace FiveLetters
         static void Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            if (args.Length < 2 || args[0] != "first" && args.Length < 3)
+            if (args.Length < 2 || args[0] != "first" && args.Length < 3 || args[0] == "graph" && args.Length < 4)
             {
                 ShowHelpAndTerminate();
             }
@@ -387,6 +391,9 @@ namespace FiveLetters
                     break;
                 case "metric":
                     GetMetric(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet));
+                    break;
+                case "graph":
+                    MakeGraph(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet), args[3]);
                     break;
                 default:
                     ShowHelpAndTerminate();
