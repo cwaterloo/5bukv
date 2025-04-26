@@ -1,6 +1,9 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
+using System.IO.Compression;
 using System.Text;
+using FiveLetters.Data;
+using Google.Protobuf;
 
 namespace FiveLetters
 {
@@ -43,80 +46,12 @@ namespace FiveLetters
             return [.. words.Order()];
         }
 
-        static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
-        {
-            long metric = current;
-            long n = 0;
-            long k = 0;
-            IState state = MakeState(word, guess);
-            foreach (Word wordToCheck in words)
-            {
-                if (state.MatchWord(wordToCheck))
-                {
-                    metric += 3 * (n + k) + 1;
-                    k += (n << 1) + 1;
-                    ++n;
-                    if (metric > observedMin)
-                    {
-                        return metric;
-                    }
-                }
-            }
-            return metric;
-        }
-
-        static Word GetCandidate(List<Word> words, List<Word> globalWords)
-        {
-            if (words.Count == 1)
-            {
-                return words[0];
-            }
-
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            long minMetric = long.MaxValue;
-            Word? candidateMin = null;
-            for (int i = 0; i < globalWords.Count; ++i)
-            {
-                long currentMetric = 0;
-                foreach (Word word in words)
-                {
-                    currentMetric = GetMatchWordCount(words, word, globalWords[i], currentMetric, minMetric);
-                    if (currentMetric > minMetric)
-                    {
-                        break;
-                    }
-                }
-                if (currentMetric < minMetric)
-                {
-                    candidateMin = globalWords[i];
-                    minMetric = currentMetric;
-                }
-
-                long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-                if (elapsedMilliseconds > 60000)
-                {
-                    Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                        "GetCandidate ETA: {0}",
-                        DateTime.Now.AddMilliseconds(elapsedMilliseconds * (globalWords.Count - i - 1) / (i + 1))));
-                }
-            }
-
-            stopwatch.Stop();
-
-            if (candidateMin.HasValue)
-            {
-                return candidateMin.Value;
-            }
-
-            throw new InvalidOperationException("No more words left.");
-        }
-
         static void GetMetric(List<Word> words, Word guess)
         {
             long metric = 0;
             foreach (Word word in words)
             {
-                metric = GetMatchWordCount(words, word, guess,
+                metric = AI.GetMatchWordCount(words, word, guess,
                     metric, (long)words.Count * words.Count * words.Count * words.Count);
             }
             Console.WriteLine("Word: {0}, Metric {1}. Mean number of words: {2}.", guess,
@@ -148,9 +83,9 @@ namespace FiveLetters
                 {
                     Console.Error.WriteLine("Number of words left at attempt 6: {0}", words.Count);
                 }
-                IState currentState = MakeState(hiddenWord, guess);
+                IState currentState = StateFactory.Make(hiddenWord, guess);
                 words = FilterWords(words, currentState);
-                guess = GetCandidate(words, globalWords);
+                guess = AI.GetCandidate(words, globalWords);
                 ++attemptCount;
             }
             return attemptCount;
@@ -160,7 +95,7 @@ namespace FiveLetters
         {
             Console.WriteLine("Getting first candidate...");
             Stopwatch stopwatch = Stopwatch.StartNew();
-            Word candidate = GetCandidate(words, words);
+            Word candidate = AI.GetCandidate(words, words);
             stopwatch.Stop();
             Console.WriteLine("Candidate: {0}.", candidate);
             Console.WriteLine("Time Elapsed: {0}.", stopwatch.Elapsed);
@@ -248,7 +183,7 @@ namespace FiveLetters
                 string enteredValue = Console.ReadLine() ?? "";
                 try
                 {
-                    IState? state = enteredValue == "yyyyy" ? null : MakeState(enteredValue, guess);
+                    IState? state = enteredValue == "yyyyy" ? null : StateFactory.Make(enteredValue, guess);
                     PrintEnteredState(enteredValue, guess);
                     Console.WriteLine();
                     return state;
@@ -292,7 +227,7 @@ namespace FiveLetters
                 }
                 try
                 {
-                    guess = GetCandidate(words, globalWords);
+                    guess = AI.GetCandidate(words, globalWords);
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -303,18 +238,13 @@ namespace FiveLetters
             } while (attempt < 6);
         }
 
-        static void MakeGraph(List<Word> globalWords, Word firstGuess, string output_filename) {
-
-        }
-
-        private static IState MakeState(Word word, Word guess)
+        static void MakeGraph(List<Word> globalWords, string outputFilename)
         {
-            return new OldState(word, guess);
-        }
-
-        private static IState MakeState(string value, Word guess)
-        {
-            return new OldState(value, guess);
+            Tree tree = TreeGenerator.Get(globalWords);
+            using FileStream fileStream = new(outputFilename, FileMode.Create);
+            using GZipStream gZipStream = new(fileStream, CompressionLevel.SmallestSize);
+            using CodedOutputStream codedOutputStream = new(gZipStream);
+            tree.WriteTo(codedOutputStream);
         }
 
         static string Contains(List<string> words, string word)
@@ -361,7 +291,7 @@ namespace FiveLetters
         static void Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            if (args.Length < 2 || args[0] != "first" && args.Length < 3 || args[0] == "graph" && args.Length < 4)
+            if (args.Length < 2 || args[0] != "first" && args.Length < 3)
             {
                 ShowHelpAndTerminate();
             }
@@ -393,7 +323,7 @@ namespace FiveLetters
                     GetMetric(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet));
                     break;
                 case "graph":
-                    MakeGraph(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet), args[3]);
+                    MakeGraph(fiveLetterWords, args[2]);
                     break;
                 default:
                     ShowHelpAndTerminate();
