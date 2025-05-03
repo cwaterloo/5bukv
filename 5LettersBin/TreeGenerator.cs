@@ -10,29 +10,33 @@ namespace FiveLetters
             this.globalWords = globalWords;
         }
 
-        internal static Tree Get(List<Word> globalWords)
+        internal static Navigation Get(List<Word> globalWords)
         {
             if (globalWords.Count <= 0) {
                 throw new ArgumentException("List of words must not be empty.");
             }
-            return new TreeGenerator(globalWords).Make(globalWords);
+
+            return new Navigation {
+                Word = { globalWords.Select(word => word.ToString()) },
+                Tree = new TreeGenerator(globalWords).Make(Enumerable.Range(0, globalWords.Count).ToList())
+            };
         }
 
-        private Tree Make(List<Word> candidates)
+        private Tree Make(List<int> candidates)
         {
-            Word guess = AI.GetCandidate(candidates, globalWords);
-            Dictionary<int, List<Word>> stateWords = [];
-            foreach (Word hiddenWord in candidates)
+            int guess = AI.GetCandidate(candidates, globalWords);
+            Dictionary<int, List<int>> stateWords = [];
+            foreach (int hiddenWord in candidates)
             {
-                int packedState = new Evaluation(hiddenWord, guess).Pack();
-                List<Word> words = stateWords.TryGetValue(packedState, out List<Word>? value) ? value : stateWords[packedState] = [];
+                int packedState = new Evaluation(globalWords[hiddenWord], globalWords[guess]).Pack();
+                List<int> words = stateWords.TryGetValue(packedState, out List<int>? value) ? value : stateWords[packedState] = [];
                 words.Add(hiddenWord);
             }
 
             Dictionary<int, Tree> edges = stateWords.Count == 1 ? [] : stateWords.ToDictionary(keyValue => keyValue.Key, keyValue => Make(keyValue.Value));
             return new()
             {
-                Word = guess.ToString(),
+                Word = guess,
                 Edges = { edges }
             };
         }
