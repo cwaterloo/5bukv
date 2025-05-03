@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using FiveLetters.Data;
@@ -46,71 +45,29 @@ namespace FiveLetters
             return [.. words.Order()];
         }
 
-        static void GetMetric(List<Word> words, Word guess)
+        static int HiddenWordGame(Word hiddenWord, Tree tree, Alphabet alphabet)
         {
-            long metric = 0;
-            foreach (Word word in words)
-            {
-                metric = AI.GetMatchWordCount(words, word, guess,
-                    metric, (long)words.Count * words.Count * words.Count * words.Count);
-            }
-            Console.WriteLine("Word: {0}, Metric {1}. Mean number of words: {2}.", guess,
-                metric, Math.Round(metric / (double)words.Count));
-        }
-
-        static List<Word> FilterWords(List<Word> words, IState state)
-        {
-            List<Word> result = [];
-            foreach (Word word in words)
-            {
-                if (state.MatchWord(word))
-                {
-                    result.Add(word);
-                }
-            }
-            return result;
-        }
-
-        static int HiddenWordGame(int index, List<Word> globalWords, Word firstGuess)
-        {
-            List<Word> words = globalWords;
-            Word hiddenWord = words[index];
-            Word guess = firstGuess;
+            Word guess = new(tree.Word, alphabet);
             int attemptCount = 1;
             while (guess != hiddenWord)
             {
-                if (attemptCount == 6 && words.Count > 1)
-                {
-                    Console.Error.WriteLine("Number of words left at attempt 6: {0}", words.Count);
-                }
-                IState currentState = StateFactory.Make(hiddenWord, guess);
-                words = FilterWords(words, currentState);
-                guess = AI.GetCandidate(words, globalWords);
+                tree = tree.Edges[new Evaluation(hiddenWord, guess).Pack()];                
+                guess = new(tree.Word, alphabet);
                 ++attemptCount;
             }
             return attemptCount;
         }
-
-        static void GetFirstCandidate(List<Word> words)
+        static void CollectStats(Tree tree)
         {
-            Console.WriteLine("Getting first candidate...");
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            Word candidate = AI.GetCandidate(words, words);
-            stopwatch.Stop();
-            Console.WriteLine("Candidate: {0}.", candidate);
-            Console.WriteLine("Time Elapsed: {0}.", stopwatch.Elapsed);
-        }
-
-        static void CollectStats(List<Word> words, Word firstGuess)
-        {
+            (List<Word> words, Alphabet alphabet) = GetFiveLetterWords(tree);
             Console.WriteLine("Collecting stats...");
             Stopwatch stopwatch = Stopwatch.StartNew();
             int maxAttempts = 0;
             List<Word> fails = [];
-            Dictionary<int, int> attempts = [];
+            Dictionary<int, int> attempts = [];            
             for (int i = 0; i < words.Count; ++i)
             {
-                int attempt_count = HiddenWordGame(i, words, firstGuess);
+                int attempt_count = HiddenWordGame(words[i], tree, alphabet);
                 if (!attempts.TryAdd(attempt_count, 1))
                 {
                     ++attempts[attempt_count];
@@ -122,13 +79,6 @@ namespace FiveLetters
                 if (attempt_count > maxAttempts)
                 {
                     maxAttempts = attempt_count;
-                }
-                long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-                if (elapsedMilliseconds > 60000)
-                {
-                    Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                        "CollectStats ETA: {0}",
-                        DateTime.Now.AddMilliseconds(elapsedMilliseconds * (words.Count - i - 1) / (i + 1))));
                 }
             }
             stopwatch.Stop();
@@ -174,7 +124,7 @@ namespace FiveLetters
             Console.WriteLine(".");
         }
 
-        static IState? GetMask(Word guess)
+        static int? GetMask(Word guess)
         {
             do
             {
@@ -183,10 +133,10 @@ namespace FiveLetters
                 string enteredValue = Console.ReadLine() ?? "";
                 try
                 {
-                    IState? state = enteredValue == "yyyyy" ? null : StateFactory.Make(enteredValue, guess);
+                    Evaluation? state = enteredValue == "yyyyy" ? null : new Evaluation(guess, enteredValue);
                     PrintEnteredState(enteredValue, guess);
                     Console.WriteLine();
-                    return state;
+                    return state?.Pack();
                 }
                 catch (ArgumentException)
                 {
@@ -195,66 +145,48 @@ namespace FiveLetters
             } while (true);
         }
 
-        static void PlayInteractiveGame(List<Word> globalWords, Word firstGuess)
+        static void PlayInteractiveGame(Tree tree)
         {
-            Word guess = firstGuess;
+            (_, Alphabet alphabet) = GetFiveLetterWords(tree);            
             int attempt = 0;
-            List<Word> words = globalWords;
             do
             {
+                Word guess = new(tree.Word, alphabet);
                 ++attempt;
-                Console.WriteLine("There are {0} words left.", words.Count);
-                if (words.Count < 10)
-                {
-                    Console.WriteLine("Words left: {0}.", string.Join(", ", words));
-                }
                 Console.Write("Attempt: {0}, Guess: ", attempt);
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write(guess);
                 Console.ResetColor();
                 Console.WriteLine(".");
-                IState? state = GetMask(guess);
+                int? state = GetMask(guess);
                 if (state == null)
                 {
                     break;
                 }
-                words = FilterWords(words, state);
-                if (words.Count <= 0)
+                if (!tree.Edges.TryGetValue(state.Value, out tree))
                 {
                     Console.WriteLine("No words left. It means that one of the previous " +
                         "mask was entered incorrectly.");
                     break;
                 }
-                try
-                {
-                    guess = AI.GetCandidate(words, globalWords);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    Console.WriteLine(string.Format("No candidates left. It means that one of the previous " +
-                        "mask was entered incorrectly. Exception: {0}", ex));
-                    break;
-                }
             } while (attempt < 6);
         }
 
-        static void MakeGraph(List<Word> globalWords, string outputFilename)
+        static void MakeGraph(List<string> globalWords, string outputFilename)
         {
-            Tree tree = TreeGenerator.Get(globalWords);
+            (List<Word> allWords, _) = GetFiveLetterWords(globalWords);
+            Tree tree = TreeGenerator.Get(allWords);
             using FileStream fileStream = new(outputFilename, FileMode.Create);
             using GZipStream gZipStream = new(fileStream, CompressionLevel.SmallestSize);
             using CodedOutputStream codedOutputStream = new(gZipStream);
             tree.WriteTo(codedOutputStream);
         }
 
-        static string Contains(List<string> words, string word)
-        {
-            if (words.BinarySearch(word) < 0)
-            {
-                Console.WriteLine("The dictionary doesn't contain '{0}'", word);
-                ShowHelpAndTerminate();
-            }
-            return word;
+        static Tree LoadGraph(string inputFileName) {
+            using FileStream fileStream = new(inputFileName, FileMode.Open);
+            using GZipStream gZipStream = new(fileStream, CompressionMode.Decompress);
+            using CodedInputStream codedInputStream = new(gZipStream);
+            return Tree.Parser.ParseFrom(codedInputStream);
         }
 
         static void ShowHelpAndTerminate()
@@ -262,41 +194,28 @@ namespace FiveLetters
             string exeName = AppDomain.CurrentDomain.FriendlyName;
             Console.WriteLine("Three way of usage: ");
             Console.WriteLine();
-            Console.WriteLine("\t$ {0} first /path/to/dictionary", exeName);
-            Console.WriteLine("\t\tComputes the best initial suggestion(s).");
+            Console.WriteLine("\t$ {0} stats /path/to/nav_graph", exeName);
+            Console.WriteLine("\t\tCollects and shows stats. The navigation graph could");
+            Console.WriteLine("\t\tbe obtained from a dictionary with the `graph` command (see below).");
             Console.WriteLine();
-            Console.WriteLine("\t$ {0} stats /path/to/dictionary suggest", exeName);
-            Console.WriteLine("\t\tCollects and shows stats.");
-            Console.WriteLine();
-            Console.WriteLine("\t$ {0} interactive /path/to/dictionary suggest", exeName);
+            Console.WriteLine("\t$ {0} interactive /path/to/nav_graph", exeName);
             Console.WriteLine("\t\tStarts interactive mode to play the game.");
             Console.WriteLine();
-            Console.WriteLine("\t$ {0} metric /path/to/dictionary suggest", exeName);
-            Console.WriteLine("\t\tComputes the metric.");
+            Console.WriteLine("\t$ {0} graph /path/to/dictionary /path/to/nav_graph", exeName);
+            Console.WriteLine("\t\tMakes the navigation graph out of the dictionary.");
             Console.WriteLine();
             Console.WriteLine("The '/path/to/dictionary' is path to a file that contains");
-            Console.WriteLine("russian words.");
+            Console.WriteLine("words.");
             Console.WriteLine("Each line of the file represents a single 5 letter russian word.");
             Console.WriteLine("All the letters must be in lowercase.");
-            Console.WriteLine("The letter 'ё' must be replaced with 'е'.");
             Console.WriteLine("Duplicates are allowed but will be ignored.");
             Console.WriteLine("The dictionary must not be empty.");
             Console.WriteLine("The codepage must be UTF-8.");
-            Console.WriteLine();
-            Console.WriteLine("The 'suggest' is a 5 letter russian word that starts the game.");
-            Console.WriteLine("The dictionary must contain the suggest.");
+            Console.WriteLine();            
             Environment.Exit(1);
         }
 
-        static void Main(string[] args)
-        {
-            Console.OutputEncoding = Encoding.UTF8;
-            if (args.Length < 2 || args[0] != "first" && args.Length < 3)
-            {
-                ShowHelpAndTerminate();
-            }
-
-            List<string> allWords = LoadWords(args[1]);
+        static (List<Word> allWords, Alphabet alphabet) GetFiveLetterWords(List<string> allWords) {
             Alphabet alphabet = GetAlphabet(allWords);
             Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.IndexToChar.Count);
             Console.WriteLine("Alphabet: {0}.", alphabet);
@@ -307,23 +226,31 @@ namespace FiveLetters
                 Console.WriteLine("The dictionary doesn't contain words.");
                 Environment.Exit(1);
             }
+            return (fiveLetterWords, alphabet);
+        }
+
+        static (List<Word> allWords, Alphabet alphabet) GetFiveLetterWords(Tree tree) {
+            return GetFiveLetterWords(WordCollector.GetWords(tree));
+        }
+
+        static void Main(string[] args)
+        {
+            Console.OutputEncoding = Encoding.UTF8;
+            if (args.Length < 2 || args[0] == "graph" && args.Length < 3)
+            {
+                ShowHelpAndTerminate();
+            }
 
             switch (args[0])
             {
-                case "first":
-                    GetFirstCandidate(fiveLetterWords);
-                    break;
                 case "stats":
-                    CollectStats(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet));
+                    CollectStats(LoadGraph(args[1]));
                     break;
                 case "interactive":
-                    PlayInteractiveGame(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet));
-                    break;
-                case "metric":
-                    GetMetric(fiveLetterWords, new Word(Contains(allWords, args[2]), alphabet));
+                    PlayInteractiveGame(LoadGraph(args[1]));
                     break;
                 case "graph":
-                    MakeGraph(fiveLetterWords, args[2]);
+                    MakeGraph(LoadWords(args[1]), args[2]);
                     break;
                 default:
                     ShowHelpAndTerminate();
