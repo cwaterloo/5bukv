@@ -9,14 +9,12 @@ namespace FiveLetters
         {
             long metric = current;
             long n = 0;
-            long k = 0;
             IState state = StateFactory.Make(word, guess);
             foreach (Word wordToCheck in words)
             {
                 if (state.MatchWord(wordToCheck))
                 {
-                    metric += 3 * (n + k) + 1;
-                    k += (n << 1) + 1;
+                    metric += (n << 1) + 1;
                     ++n;
                     if (metric > observedMin)
                     {
