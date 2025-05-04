@@ -45,21 +45,21 @@ namespace FiveLetters
             return [.. words.Order()];
         }
 
-        static int HiddenWordGame(int hiddenWord, Tree tree, List<Word> globalWords)
+        static int HiddenWordGame(Word hiddenWord, Tree tree, Alphabet alphabet)
         {
-            int guess = tree.Word;
+            Word guess = new(tree.Word, alphabet);
             int attemptCount = 1;
             while (guess != hiddenWord)
             {
-                tree = tree.Edges[new Evaluation(globalWords[hiddenWord], globalWords[guess]).Pack()];                
-                guess = tree.Word;
+                tree = tree.Edges[new Evaluation(hiddenWord, guess).Pack()];                
+                guess = new(tree.Word, alphabet);
                 ++attemptCount;
             }
             return attemptCount;
         }
-        static void CollectStats(Navigation navigation)
+        static void CollectStats(Tree tree)
         {
-            List<Word> words = GetFiveLetterWords(navigation);
+            (List<Word> words, Alphabet alphabet) = GetFiveLetterWords(tree);
             Console.WriteLine("Collecting stats...");
             Stopwatch stopwatch = Stopwatch.StartNew();
             int maxAttempts = 0;
@@ -67,7 +67,7 @@ namespace FiveLetters
             Dictionary<int, int> attempts = [];            
             for (int i = 0; i < words.Count; ++i)
             {
-                int attempt_count = HiddenWordGame(i, navigation.Tree, words);
+                int attempt_count = HiddenWordGame(words[i], tree, alphabet);
                 if (!attempts.TryAdd(attempt_count, 1))
                 {
                     ++attempts[attempt_count];
@@ -145,21 +145,20 @@ namespace FiveLetters
             } while (true);
         }
 
-        static void PlayInteractiveGame(Navigation navigation)
+        static void PlayInteractiveGame(Tree tree)
         {
-            List<Word> globalWords = GetFiveLetterWords(navigation);     
-            Tree tree = navigation.Tree;       
+            (_, Alphabet alphabet) = GetFiveLetterWords(tree);            
             int attempt = 0;
             do
             {
-                int guess = tree.Word;
+                Word guess = new(tree.Word, alphabet);
                 ++attempt;
                 Console.Write("Attempt: {0}, Guess: ", attempt);
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.Write(globalWords[guess]);
+                Console.Write(guess);
                 Console.ResetColor();
                 Console.WriteLine(".");
-                int? state = GetMask(globalWords[guess]);
+                int? state = GetMask(guess);
                 if (state == null)
                 {
                     break;
@@ -175,19 +174,19 @@ namespace FiveLetters
 
         static void MakeGraph(List<string> globalWords, string outputFilename)
         {
-            List<Word> allWords = GetFiveLetterWords(globalWords);
-            Navigation navigation = TreeGenerator.Get(allWords);
+            (List<Word> allWords, _) = GetFiveLetterWords(globalWords);
+            Tree tree = TreeGenerator.Get(allWords);
             using FileStream fileStream = new(outputFilename, FileMode.Create);
             using GZipStream gZipStream = new(fileStream, CompressionLevel.SmallestSize);
             using CodedOutputStream codedOutputStream = new(gZipStream);
-            navigation.WriteTo(codedOutputStream);
+            tree.WriteTo(codedOutputStream);
         }
 
-        static Navigation LoadGraph(string inputFileName) {
+        static Tree LoadGraph(string inputFileName) {
             using FileStream fileStream = new(inputFileName, FileMode.Open);
             using GZipStream gZipStream = new(fileStream, CompressionMode.Decompress);
             using CodedInputStream codedInputStream = new(gZipStream);
-            return Navigation.Parser.ParseFrom(codedInputStream);
+            return Tree.Parser.ParseFrom(codedInputStream);
         }
 
         static void ShowHelpAndTerminate()
@@ -216,32 +215,22 @@ namespace FiveLetters
             Environment.Exit(1);
         }
 
-        static void CheckIfSortedAndHasNoDuplicates(IReadOnlyList<string> allWords) {
-            if (allWords.Count <= 0)
-            {
-                Console.WriteLine("The dictionary doesn't contain words.");
-                Environment.Exit(1);
-            }
-            for (int i = 0; i < allWords.Count - 1; ++i) {
-                if (string.Compare(allWords[i], allWords[i + 1]) >= 0) {
-                    Console.WriteLine("The dictionary is not sorted or contains duplicates.");
-                    Environment.Exit(1);
-                }
-            }
-        }
-
-        static List<Word> GetFiveLetterWords(IReadOnlyList<string> allWords) {
-            CheckIfSortedAndHasNoDuplicates(allWords);
+        static (List<Word> allWords, Alphabet alphabet) GetFiveLetterWords(List<string> allWords) {
             Alphabet alphabet = GetAlphabet(allWords);
             Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.IndexToChar.Count);
             Console.WriteLine("Alphabet: {0}.", alphabet);
             List<Word> fiveLetterWords = allWords.Select(word => new Word(word, alphabet)).ToList();
             Console.WriteLine(string.Format("Loaded {0} words.", fiveLetterWords.Count));
-            return fiveLetterWords;
+            if (fiveLetterWords.Count <= 0)
+            {
+                Console.WriteLine("The dictionary doesn't contain words.");
+                Environment.Exit(1);
+            }
+            return (fiveLetterWords, alphabet);
         }
 
-        static List<Word> GetFiveLetterWords(Navigation navigation) {
-            return GetFiveLetterWords(navigation.Word);
+        static (List<Word> allWords, Alphabet alphabet) GetFiveLetterWords(Tree tree) {
+            return GetFiveLetterWords(WordCollector.GetWords(tree));
         }
 
         static void Main(string[] args)

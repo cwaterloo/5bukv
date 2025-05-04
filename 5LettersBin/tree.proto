@@ -3,11 +3,6 @@ syntax = "proto3";
 package five_letters.data;
 
 message Tree {
-  int32 word = 1;
+  string word = 1;
   map<int32, Tree> edges = 2;
-}
-
-message Navigation {
-  repeated string word = 1;
-  Tree tree = 2;
 }

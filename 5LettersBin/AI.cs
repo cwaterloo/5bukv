@@ -5,14 +5,14 @@ namespace FiveLetters
 {
     internal sealed class AI
     {
-        internal static long GetMatchWordCount(List<int> words, int word, int guess, long current, long observedMin, List<Word> globalWords)
+        internal static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
         {
             long metric = current;
             long n = 0;
-            IState state = StateFactory.Make(globalWords[word], globalWords[guess]);
-            foreach (int wordToCheck in words)
+            IState state = StateFactory.Make(word, guess);
+            foreach (Word wordToCheck in words)
             {
-                if (state.MatchWord(globalWords[wordToCheck]))
+                if (state.MatchWord(wordToCheck))
                 {
                     metric += (n << 1) + 1;
                     ++n;
@@ -25,7 +25,7 @@ namespace FiveLetters
             return metric;
         }
 
-        internal static int GetCandidate(List<int> words, List<Word> globalWords)
+        internal static Word GetCandidate(List<Word> words, List<Word> globalWords)
         {
             if (words.Count == 1)
             {
@@ -34,13 +34,13 @@ namespace FiveLetters
 
             Stopwatch stopwatch = Stopwatch.StartNew();
             long minMetric = long.MaxValue;
-            int? candidateMin = null;
-            foreach (int i in Enumerable.Range(0, globalWords.Count))
+            Word? candidateMin = null;
+            for (int i = 0; i < globalWords.Count; ++i)
             {
                 long currentMetric = 0;
-                foreach (int word in words)
+                foreach (Word word in words)
                 {
-                    currentMetric = GetMatchWordCount(words, word, i, currentMetric, minMetric, globalWords);
+                    currentMetric = GetMatchWordCount(words, word, globalWords[i], currentMetric, minMetric);
                     if (currentMetric > minMetric)
                     {
                         break;
@@ -48,7 +48,7 @@ namespace FiveLetters
                 }
                 if (currentMetric < minMetric)
                 {
-                    candidateMin = i;
+                    candidateMin = globalWords[i];
                     minMetric = currentMetric;
                 }
 
