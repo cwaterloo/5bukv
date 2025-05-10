@@ -1,15 +1,12 @@
-using System.Diagnostics;
-using System.Globalization;
-
 namespace FiveLetters
 {
-    internal sealed class AI
+    public static class AI
     {
-        internal static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
+        public static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
         {
             long metric = current;
             long n = 0;
-            IState state = StateFactory.Make(word, guess);
+            State state = new(word, guess);
             foreach (Word wordToCheck in words)
             {
                 if (state.MatchWord(wordToCheck))
@@ -25,14 +22,13 @@ namespace FiveLetters
             return metric;
         }
 
-        internal static Word GetCandidate(List<Word> words, List<Word> globalWords)
+        public static Word GetCandidate(List<Word> words, List<Word> globalWords)
         {
             if (words.Count == 1)
             {
                 return words[0];
             }
 
-            Stopwatch stopwatch = Stopwatch.StartNew();
             long minMetric = long.MaxValue;
             Word? candidateMin = null;
             for (int i = 0; i < globalWords.Count; ++i)
@@ -51,17 +47,7 @@ namespace FiveLetters
                     candidateMin = globalWords[i];
                     minMetric = currentMetric;
                 }
-
-                long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-                if (elapsedMilliseconds > 60000)
-                {
-                    Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                        "GetCandidate ETA: {0}",
-                        DateTime.Now.AddMilliseconds(elapsedMilliseconds * (globalWords.Count - i - 1) / (i + 1))));
-                }
             }
-
-            stopwatch.Stop();
 
             if (candidateMin.HasValue)
             {

@@ -3,15 +3,15 @@ using System.Text;
 
 namespace FiveLetters
 {
-    struct Word : IEnumerable<Letter>, IEquatable<Word>
+    public struct Word : IEnumerable<Letter>, IEquatable<Word>
     {
-        internal const int WordLetterCount = 5;
+        public const int WordLetterCount = 5;
 
         private readonly Letter[] _Letters;
 
-        internal readonly int AlphabetLetterCount => _Alphabet.IndexToChar.Count;
+        public readonly int AlphabetLetterCount => _Alphabet.IndexToChar.Count;
 
-        internal readonly Letter this[int index]
+        public readonly Letter this[int index]
         {
             get => _Letters[index];
         }
@@ -49,7 +49,7 @@ namespace FiveLetters
 
         private readonly Alphabet _Alphabet;
 
-        internal Word(string wordOrNull, Alphabet alphabet)
+        public Word(string wordOrNull, Alphabet alphabet)
         {
             string word = wordOrNull ?? "";
             if (word.Length != WordLetterCount)

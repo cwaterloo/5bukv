@@ -2,15 +2,15 @@ using FiveLetters.Data;
 
 namespace FiveLetters
 {
-    internal sealed class TreeGenerator
+    public sealed class TreeGenerator
     {
-        private List<Word> globalWords;
+        private readonly List<Word> globalWords;
 
         private TreeGenerator(List<Word> globalWords) {
             this.globalWords = globalWords;
         }
 
-        internal static Tree Get(List<Word> globalWords)
+        public static Tree Get(List<Word> globalWords)
         {
             if (globalWords.Count <= 0) {
                 throw new ArgumentException("List of words must not be empty.");

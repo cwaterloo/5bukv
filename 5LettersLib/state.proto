@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package five_letters.data;
+
+enum Evaluation {
+    EVALUATION_ABSENT = 0;
+    EVALUATION_PRESENCE = 1;
+    EVALUATION_CORRECT = 2;
+}
+
+message GameState {
+    repeated int32 chain = 1;
+    repeated Evaluation evaluation = 2;
+}

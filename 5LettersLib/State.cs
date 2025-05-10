@@ -1,26 +1,26 @@
 namespace FiveLetters
 {
-    enum LetterState
+    internal enum LetterState
     {
         Unknown,
         Absense,
         Presense
     }
 
-    readonly record struct PositionState
+    internal readonly record struct PositionState
     {
         internal required Letter Letter { get; init; }
         internal required bool Interpretation { get; init; }
         internal bool MatchLetter(Letter letter) => letter == Letter == Interpretation;
     }
 
-    readonly struct OldState : IState
+    public readonly struct State
     {
         private readonly LetterState[] _LetterStates;
 
         private readonly PositionState?[] _PositionStates;
 
-        internal OldState(Word word, Word guess)
+        public State(Word word, Word guess)
         {
             if (guess.AlphabetLetterCount != word.AlphabetLetterCount)
             {
@@ -92,7 +92,7 @@ namespace FiveLetters
             return stateCountPresence <= countPresence;
         }
 
-        internal OldState(string value, Word guess)
+        public State(string value, Word guess)
         {
             if (value.Length != Word.WordLetterCount)
             {

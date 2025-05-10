@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-   <ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\5LettersLib\5LettersLib.csproj" />
   </ItemGroup>
 

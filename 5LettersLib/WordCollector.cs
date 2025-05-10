@@ -2,9 +2,9 @@ using FiveLetters.Data;
 
 namespace FiveLetters
 {
-    internal sealed class WordCollector
+    public sealed class WordCollector
     {
-        private HashSet<string> words = [];
+        private readonly HashSet<string> words = [];
 
         private WordCollector() {}
 
@@ -15,7 +15,7 @@ namespace FiveLetters
             }
         }
         
-        internal static List<string> GetWords(Tree tree) {
+        public static List<string> GetWords(Tree tree) {
             WordCollector wordCollector = new ();
             wordCollector.Process(tree);
             return wordCollector.words.Order().ToList();

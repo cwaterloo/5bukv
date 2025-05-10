@@ -1,8 +1,11 @@
 namespace FiveLetters
 {
-    readonly struct Letter : IEquatable<Letter>
+    public readonly struct Letter : IEquatable<Letter>
     {
-        internal Letter(char value, Alphabet alphabet)
+        private readonly Alphabet _Alphabet;
+        public int Value { get; init; }
+
+        public Letter(char value, Alphabet alphabet)
         {
             if (!alphabet.CharToIndex.ContainsKey(value))
             {
@@ -13,7 +16,7 @@ namespace FiveLetters
             _Alphabet = alphabet;
         }
 
-        internal readonly char ToChar() => _Alphabet.IndexToChar[Value];
+        public readonly char ToChar() => _Alphabet.IndexToChar[Value];
 
         public readonly bool Equals(Letter other) => Value == other.Value;
 
@@ -22,10 +25,6 @@ namespace FiveLetters
         public static bool operator !=(Letter left, Letter right) => !left.Equals(right);
 
         public static implicit operator int(Letter letter) => letter.Value;
-
-        internal int Value { get; init; }
-
-        private readonly Alphabet _Alphabet;
 
         public override readonly bool Equals(object? obj) => obj is Letter letter && Equals(letter);
 

@@ -2,13 +2,27 @@ using System.Text;
 
 namespace FiveLetters
 {
-    sealed class Alphabet
+    public sealed class Alphabet
     {
-        internal IReadOnlyList<char> IndexToChar { get; init; }
+        public IReadOnlyList<char> IndexToChar { get; init; }
 
-        internal IReadOnlyDictionary<char, int> CharToIndex { get; init; }
+        public IReadOnlyDictionary<char, int> CharToIndex { get; init; }
 
-        internal Alphabet(IReadOnlyList<char> IndexToChar)
+        public static Alphabet FromWords(IReadOnlyList<string> words)
+        {
+            HashSet<char> chars = [];
+            foreach (string word in words)
+            {
+                foreach (char letter in word)
+                {
+                    chars.Add(letter);
+                }
+            }
+
+            return new(chars.Order().ToList().AsReadOnly());
+        }
+
+        public Alphabet(IReadOnlyList<char> IndexToChar)
         {
             this.IndexToChar = IndexToChar;
             Dictionary<char, int> dict = [];

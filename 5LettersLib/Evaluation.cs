@@ -2,14 +2,16 @@ using System.Collections.Immutable;
 
 namespace FiveLetters
 {
-    internal sealed class Evaluation
+    public enum EvaluationType
     {
-        internal enum EvaluationType
-        {
-            Absent,
-            Present,
-            Correct
-        }
+        Absent,
+        Present,
+        Correct
+    }
+
+    public sealed class Evaluation
+    {
+
 
         private readonly ImmutableList<EvaluationType> evaluations;
 
@@ -41,7 +43,7 @@ namespace FiveLetters
             return evaluations;
         }
 
-        internal Evaluation(Word guess, string value) {
+        public Evaluation(Word guess, string value) {
             if (value.Length != Word.WordLetterCount)
             {
                 throw new ArgumentException(string.Format(
@@ -63,7 +65,7 @@ namespace FiveLetters
             this.evaluations = evaluations.ToImmutableList();
         }
 
-        internal Evaluation(Word hiddenWord, Word guess)
+        public Evaluation(Word hiddenWord, Word guess)
         {
             if (hiddenWord.AlphabetLetterCount != guess.AlphabetLetterCount)
             {
@@ -86,12 +88,12 @@ namespace FiveLetters
             this.evaluations = evaluations.ToImmutableList();
         }
 
-        internal Evaluation(ImmutableList<EvaluationType> evaluations)
+        public Evaluation(ImmutableList<EvaluationType> evaluations)
         {
             this.evaluations = evaluations;
         }
 
-        internal int Pack()
+        public int Pack()
         {
             int count = Enum.GetValues<EvaluationType>().Length;
             int result = 0;
