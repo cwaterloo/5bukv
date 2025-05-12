@@ -11,11 +11,10 @@ namespace FiveLetters
 
     public sealed class Evaluation
     {
-
-
         private readonly ImmutableList<EvaluationType> evaluations;
 
-        private static EvaluationType GetEvaluation(char value) {
+        private static EvaluationType GetEvaluation(char value)
+        {
             switch (value)
             {
                 case 'g':
@@ -32,7 +31,8 @@ namespace FiveLetters
             }
         }
 
-        private static List<EvaluationType> GetEvaluations(string value) {
+        private static List<EvaluationType> GetEvaluations(string value)
+        {
             List<EvaluationType> evaluations = [];
 
             foreach (char chr in value)
@@ -43,7 +43,29 @@ namespace FiveLetters
             return evaluations;
         }
 
-        public Evaluation(Word guess, string value) {
+        private static List<EvaluationType> GetEvaluations(IEnumerable<Data.Evaluation> evaluations) {
+            List<EvaluationType> evaluationTypes = [];
+            foreach (Data.Evaluation evaluation in evaluations)
+            {
+                switch (evaluation)
+                {
+                    case Data.Evaluation.Absent:
+                        evaluationTypes.Add(EvaluationType.Absent);
+                        break;
+                    case Data.Evaluation.Correct:
+                        evaluationTypes.Add(EvaluationType.Correct);
+                        break;
+                    case Data.Evaluation.Present:
+                        evaluationTypes.Add(EvaluationType.Present);
+                        break;
+                }
+            }
+
+            return evaluationTypes;
+        }
+
+        public Evaluation(Word guess, string value)
+        {
             if (value.Length != Word.WordLetterCount)
             {
                 throw new ArgumentException(string.Format(
@@ -88,7 +110,7 @@ namespace FiveLetters
             this.evaluations = evaluations.ToImmutableList();
         }
 
-        public Evaluation(ImmutableList<EvaluationType> evaluations)
+        private Evaluation(ImmutableList<EvaluationType> evaluations)
         {
             this.evaluations = evaluations;
         }
@@ -102,6 +124,63 @@ namespace FiveLetters
                 result = result * count + (int)evaluationType;
             }
             return result;
+        }
+
+        public static Evaluation Unpack(int value)
+        {
+            int count = Enum.GetValues<EvaluationType>().Length;
+            List<EvaluationType> evaluationTypes = [];
+            for (int i = 0; i < Word.WordLetterCount; ++i)
+            {
+                evaluationTypes.Add((EvaluationType)(value % count));
+                value /= count;
+            }
+            evaluationTypes.Reverse();
+            return new(evaluationTypes.ToImmutableList());
+        }
+
+        public static Evaluation FromDataEvaluations(IEnumerable<Data.Evaluation> evaluations, string word)
+        {
+            if (word.Length != Word.WordLetterCount)
+            {
+                throw new ArgumentException(string.Format(
+                    "The word must contain exactly {0} characters.", Word.WordLetterCount));
+            }
+
+            List<EvaluationType> evaluationTypes = GetEvaluations(evaluations);
+
+            HashSet<char> presentLetters = word.Zip(evaluationTypes)
+                .Where(pair => pair.Second != EvaluationType.Absent)
+                .Select(pair => pair.First).ToHashSet();
+
+            for (int i = 0; i < Word.WordLetterCount; ++i)
+            {
+                if (evaluationTypes[i] == EvaluationType.Absent && presentLetters.Contains(word[i]))
+                {
+                    evaluationTypes[i] = EvaluationType.Present;
+                }
+            }
+
+            return new Evaluation(evaluationTypes.ToImmutableList());
+        }
+
+        public IEnumerable<Data.Evaluation> ToDataEvaluations()
+        {
+            foreach (EvaluationType evaluationType in evaluations)
+            {
+                switch (evaluationType)
+                {
+                    case EvaluationType.Absent:
+                        yield return Data.Evaluation.Absent;
+                        break;
+                    case EvaluationType.Correct:
+                        yield return Data.Evaluation.Correct;
+                        break;
+                    case EvaluationType.Present:
+                        yield return Data.Evaluation.Present;
+                        break;
+                }
+            }
         }
     }
 }
