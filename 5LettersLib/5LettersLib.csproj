@@ -22,4 +22,37 @@
     <Protobuf Include="**\*.proto" />
   </ItemGroup>
 
+   <ItemGroup>
+        <EmbeddedResource Include="Resources\Strings.ru-RU.restext" />
+        <EmbeddedResource Include="Resources\Strings.restext" />
+   </ItemGroup>
+
+  <!--
+
+  <ItemGroup>
+     <None Remove="Resources\Strings\*.restext" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties" />
+  </ItemGroup>
+
+  <Target Name="CreateNeturalLanguageTextResource" BeforeTargets="BeforeBuild">
+        <Message Text="Creating neutral language text resource" />
+        <Copy SourceFiles="Resources\Strings\Strings.en-US.restext" DestinationFiles="Resources\Strings\Strings.restext" />
+    </Target>
+
+  <ItemGroup>
+        <EmbeddedResource Include="Resources\Strings\Strings.restext">
+            <DesignTime>True</DesignTime>
+            <StronglyTypedLanguage>C#</StronglyTypedLanguage>
+            <StronglyTypedClassName>%(Filename)</StronglyTypedClassName>
+            <StronglyTypedNamespace>$(RootNamespace).Properties</StronglyTypedNamespace>
+            <StronglyTypedFilename>$(MSBuildProjectDirectory)\Properties\%(Filename).cs</StronglyTypedFilename>
+            <PublicClass>true</PublicClass>
+        </EmbeddedResource>
+        <EmbeddedResource Include="Resources\Strings\Strings.ru-RU.restext"/>
+        <EmbeddedResource Include="Resources\Strings\Strings.en-US.restext"/>
+    </ItemGroup>
+    -->
 </Project>

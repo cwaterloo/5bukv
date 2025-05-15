@@ -7,6 +7,8 @@ using FiveLetters.Data;
 using System.Text;
 using Protobuf.Text;
 using Telegram.BotAPI.UpdatingMessages;
+using System.Resources;
+using System.Globalization;
 
 namespace FiveLetters
 {
@@ -19,8 +21,12 @@ namespace FiveLetters
         Error
     }
 
-    public sealed class BotApp(TelegramBotClient client, Tree tree)
+    public sealed class BotApp(TelegramBotClient client, Tree tree, CultureInfo cultureInfo, ResourceManager resourceManager)
     {
+        private string GetResourceString(string key) {
+            return resourceManager.GetString(key, cultureInfo)!;
+        }
+
         private static SessionStatus GetSessionStatus(bool noEdges, bool noWordsLeft)
         {
             if (noEdges)
@@ -31,13 +37,13 @@ namespace FiveLetters
             return noWordsLeft ? SessionStatus.Error : SessionStatus.InProgress;
         }
 
-        private static string GetSessionStatusText(SessionStatus sessionStatus)
+        private string GetSessionStatusText(SessionStatus sessionStatus)
         {
             return sessionStatus switch
             {
-                SessionStatus.InProgress => "в процессе",
-                SessionStatus.Completed => "завершено",
-                SessionStatus.Error => "ошибка (нет подходящих слов)",
+                SessionStatus.InProgress => GetResourceString("InProgress"),
+                SessionStatus.Completed => GetResourceString("Completed"),
+                SessionStatus.Error => GetResourceString("Error"),
                 _ => throw new InvalidDataException(string.Format("Unknown enum value: {0}", sessionStatus)),
             };
         }
@@ -62,7 +68,7 @@ namespace FiveLetters
         {
             return evaluation switch
             {
-                Data.Evaluation.Absent => '-',
+                Data.Evaluation.Absent => '−',
                 Data.Evaluation.Present => '+',
                 Data.Evaluation.Correct => '=',
                 _ => throw new InvalidDataException(string.Format("Unknown enum value: {0}", evaluation)),
@@ -107,7 +113,7 @@ namespace FiveLetters
                 else
                 {
                     noWordsLeft = true;
-                    wordChain.Add("\\[нет подходящих слов\\]");
+                    wordChain.Add(string.Format(cultureInfo, "\\[{0}\\]", GetResourceString("NoSuitableWords")));
                     break;
                 }
             }
@@ -122,15 +128,15 @@ namespace FiveLetters
             switch (sessionStatus)
             {
                 case SessionStatus.Completed:
-                    textBuilder.Append(string.Format("*Слово: {0}*\\.\n", lastTree.Word));
+                    textBuilder.Append(string.Format(cultureInfo, GetResourceString("WordTemplate"), lastTree.Word));
                     break;
                 case SessionStatus.InProgress:
-                    textBuilder.Append(string.Format("*Предположение: {0}*\\.\n", lastTree.Word));
+                    textBuilder.Append(string.Format(cultureInfo, GetResourceString("SuggestionTemplate"), lastTree.Word));
                     break;
             }
-            textBuilder.Append(string.Format("*Цепочка слов:* `{0}`\\.\n", string.Join(" \\-\\> ", wordChain)));
-            textBuilder.Append(string.Format("*Состояние:* {0}\\.\n", GetSessionStatusText(sessionStatus)));
-            textBuilder.Append("*Помощь:* отправьте /help\\.\n");
+            textBuilder.Append(string.Format(cultureInfo, GetResourceString("WordChainTemplate"), string.Join(" \\-\\> ", wordChain)));
+            textBuilder.Append(string.Format(cultureInfo, GetResourceString("StateTemplate"), GetSessionStatusText(sessionStatus)));
+            textBuilder.Append(string.Format(cultureInfo, GetResourceString("HelpTemplate"), "/help"));
 
             if (gameState.Chain.Count > 0)
             {
@@ -141,7 +147,7 @@ namespace FiveLetters
                     Evaluation = { Evaluation.Unpack(gameState.Chain[^1]).ToDataEvaluations() }
                 };
 
-                buttonRowTwo.Add(new InlineKeyboardButton("Назад") { CallbackData = GameStateSerializer.Save(prevGameState) });
+                buttonRowTwo.Add(new InlineKeyboardButton(GetResourceString("Back")) { CallbackData = GameStateSerializer.Save(prevGameState) });
             }
 
             if (lastTree.Edges.Count != 0 && !noWordsLeft)
@@ -153,7 +159,7 @@ namespace FiveLetters
                     Evaluation = { GetDefaultEvaluation() }
                 };
 
-                buttonRowTwo.Add(new InlineKeyboardButton("Вперед") { CallbackData = GameStateSerializer.Save(nextGameState) });
+                buttonRowTwo.Add(new InlineKeyboardButton(GetResourceString("Forward")) { CallbackData = GameStateSerializer.Save(nextGameState) });
 
                 // Letter buttons                
                 GameState letterGameState = gameState.Clone();
@@ -200,10 +206,9 @@ namespace FiveLetters
 
         private void ProcessHelp(long chatId)
         {
-            string text = "TODO";
             try
             {
-                client.SendMessage(chatId, text: text);
+                client.SendMessage(chatId, text: GetResourceString("Help"));
             }
             catch (BotRequestException ex)
             {
@@ -304,14 +309,24 @@ namespace FiveLetters
             return TreeSerializer.Load(serviceProvider.GetService<BotConfig>()!.TreeFile);
         }
 
+        private static ResourceManager GetResourceManager(IServiceProvider serviceProvider) {
+            return new ResourceManager("FiveLetters.Resources.Strings", typeof(BotApp).Assembly);
+        }
+
+        private static CultureInfo GetCultureInfo(IServiceProvider serviceProvider) {
+
+            return new CultureInfo(serviceProvider.GetService<BotConfig>()!.Culture, false);
+        }
+
         public static void Run(string[] args)
         {
-
             var services = new ServiceCollection();
             services.AddSingleton<BotApp>();
             services.AddSingleton(LoadConfig(args[0]));
             services.AddSingleton(GetTree);
             services.AddSingleton(GetTelegramBotClient);
+            services.AddSingleton(GetResourceManager);
+            services.AddSingleton(GetCultureInfo);
 
             ServiceProvider serviceProvider = services.BuildServiceProvider();
             serviceProvider.GetService<BotApp>()?.Run();

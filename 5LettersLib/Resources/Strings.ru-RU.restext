@@ -1,0 +1,12 @@
+NoSuitableWords=нет подходящих слов
+InProgress=в процессе
+Completed=завершено 
+Error=ошибка \\(нет подходящих слов\\)
+WordTemplate=*Слово: {0}*\\.\n
+SuggestionTemplate=*Предположение: {0}*\\.\n
+WordChainTemplate=*Цепочка слов:* `{0}`\\.\n
+StateTemplate=*Состояние:* {0}\\.\n
+HelpTemplate=*Помощь:* отправьте {0}\\.\n
+Back=Назад
+Forward=Вперед
+Help=Нужно сделать

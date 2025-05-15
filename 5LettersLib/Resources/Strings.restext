@@ -1,0 +1,12 @@
+NoSuitableWords=no suitable words
+InProgress=in progress
+Completed=completed 
+Error=error \\(no suitable words\\)
+WordTemplate=*Word: {0}*\\.\n
+SuggestionTemplate=*Suggestion: {0}*\\.\n
+WordChainTemplate=*Word chain:* `{0}`\\.\n
+StateTemplate=*State:* {0}\\.\n
+HelpTemplate=*Help:* send {0}\\.\n
+Back=Back
+Forward=Forward
+Help=TODO

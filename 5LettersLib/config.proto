@@ -5,4 +5,5 @@ package five_letters.data;
 message BotConfig {
     string api_token = 1;
     string tree_file = 2;
+    string culture = 3;
 }
