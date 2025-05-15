@@ -9,6 +9,7 @@ using Protobuf.Text;
 using Telegram.BotAPI.UpdatingMessages;
 using System.Resources;
 using System.Globalization;
+using Google.Protobuf;
 
 namespace FiveLetters
 {
@@ -239,7 +240,15 @@ namespace FiveLetters
                 return;
             }
 
-            Msg? msg = MakeMsg(GameStateSerializer.Load(callbackQuery.Data));
+            GameState gameState;
+
+            try {
+                gameState = GameStateSerializer.Load(callbackQuery.Data);
+            } catch (Exception ex) when (ex is FormatException || ex is InvalidProtocolBufferException) {
+                return;
+            }
+
+            Msg? msg = MakeMsg(gameState);
             if (msg != null)
             {
                 try
@@ -288,7 +297,11 @@ namespace FiveLetters
         {
             while (true)
             {
-                ProcessUpdates();
+                try {
+                    ProcessUpdates();
+                } catch (BotRequestException) {
+                    
+                }
                 Task.Delay(5000);
             }
         }
