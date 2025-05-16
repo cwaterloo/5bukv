@@ -317,7 +317,7 @@ namespace FiveLetters
             builder.Services.AddSingleton(GetCultureInfo);
             builder.Services.AddSingleton(GetSecretToken);
             builder.Services.AddSingleton<AppSettings>();
-            builder.Services.AddSingleton<BotApp>();
+            builder.Services.AddActivatedSingleton<BotApp>();
 
             var app = builder.Build();
 
