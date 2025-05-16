@@ -2,17 +2,19 @@ using Microsoft.Extensions.DependencyInjection;
 using Telegram.BotAPI;
 using Telegram.BotAPI.AvailableMethods;
 using Telegram.BotAPI.AvailableTypes;
-using Telegram.BotAPI.GettingUpdates;
 using FiveLetters.Data;
 using System.Text;
 using Telegram.BotAPI.UpdatingMessages;
+using Telegram.BotAPI.Extensions;
 using System.Resources;
 using System.Globalization;
 using Google.Protobuf;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Telegram.BotAPI.GettingUpdates;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 
 namespace FiveLetters
 {
@@ -38,22 +40,71 @@ namespace FiveLetters
         public string Value => token;
     }
 
-    public sealed class BotApp(TelegramBotClient client, Tree tree, CultureInfo cultureInfo, ResourceManager resourceManager, SecretToken token)
+    public sealed class BotApp(TelegramBotClient client, Tree tree, CultureInfo cultureInfo, ResourceManager resourceManager, SecretToken token) : SimpleTelegramBotBase
     {
-        private void ProcessUpdate(Update update, string secretToken)
+        public async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
-            if (token.Value != secretToken)
+            if (secretToken != token.Value)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (update == default)
+            {
+                return Results.BadRequest();
+            }
+
+            await OnUpdateAsync(update, cancellationToken);
+            return Results.Ok();
+        }
+
+
+        protected override Task OnBotExceptionAsync(BotRequestException exp, CancellationToken cancellationToken = default)
+        {
+            if (exp.ErrorCode / 100 == 4)
+            {
+                return Task.CompletedTask;
+            }
+
+            throw new InvalidOperationException("Unknown bot request exception.", exp);
+        }
+
+        protected override Task OnExceptionAsync(Exception exp, CancellationToken cancellationToken = default)
+        {
+            if (exp is FormatException || exp is InvalidProtocolBufferException)
+            {
+                return Task.CompletedTask;
+            }
+
+            throw new InvalidOperationException("Unknown exception.", exp);
+        }
+
+        protected override async Task OnMessageAsync(Message message, CancellationToken cancellationToken = default)
+        {
+            switch (message.Text)
+            {
+                case "/start":
+                    await ProcessStartAsync(message.Chat.Id, cancellationToken);
+                    return;
+                case "/help":
+                    await ProcessHelpAsync(message.Chat.Id, cancellationToken);
+                    return;
+            }
+        }
+
+        protected async override Task OnCallbackQueryAsync(CallbackQuery callbackQuery, CancellationToken cancellationToken = default)
+        {
+            if (callbackQuery.Data == null || callbackQuery.Message == null)
             {
                 return;
             }
 
-            if (update.Message != null)
+            GameState gameState = GameStateSerializer.Load(callbackQuery.Data);
+            Msg? msg = MakeMsg(gameState);
+            if (msg != null)
             {
-                ProcessMessage(update.Message);
-            }
-            else if (update.CallbackQuery != null)
-            {
-                ProcessCallbackQuery(update.CallbackQuery);
+                await client.EditMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId,
+                    text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2", cancellationToken: cancellationToken);
             }
         }
 
@@ -220,87 +271,18 @@ namespace FiveLetters
             return new Msg(textBuilder.ToString(), new InlineKeyboardMarkup(buttons));
         }
 
-        private void ProcessStart(long chatId)
+        private async Task ProcessStartAsync(long chatId, CancellationToken cancellationToken)
         {
             Msg? msg = MakeMsg(MakeInitialGameState());
             if (msg != null)
             {
-                try
-                {
-                    client.SendMessage(chatId, text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2");
-                }
-                catch (BotRequestException ex)
-                {
-                    if (ex.ErrorCode / 100 != 4)
-                    {
-                        throw;
-                    }
-                }
+                await client.SendMessageAsync(chatId, text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2", cancellationToken: cancellationToken);
             }
         }
 
-        private void ProcessHelp(long chatId)
+        private async Task ProcessHelpAsync(long chatId, CancellationToken cancellationToken)
         {
-            try
-            {
-                client.SendMessage(chatId, text: GetResourceString("Help"));
-            }
-            catch (BotRequestException ex)
-            {
-                if (ex.ErrorCode / 100 != 4)
-                {
-                    throw;
-                }
-            }
-        }
-
-        private void ProcessMessage(Message message)
-        {
-            switch (message.Text)
-            {
-                case "/start":
-                    ProcessStart(message.Chat.Id);
-                    return;
-                case "/help":
-                    ProcessHelp(message.Chat.Id);
-                    return;
-            }
-        }
-
-        private void ProcessCallbackQuery(CallbackQuery callbackQuery)
-        {
-            if (callbackQuery.Data == null || callbackQuery.Message == null)
-            {
-                return;
-            }
-
-            GameState gameState;
-
-            try
-            {
-                gameState = GameStateSerializer.Load(callbackQuery.Data);
-            }
-            catch (Exception ex) when (ex is FormatException || ex is InvalidProtocolBufferException)
-            {
-                return;
-            }
-
-            Msg? msg = MakeMsg(gameState);
-            if (msg != null)
-            {
-                try
-                {
-                    client.EditMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId,
-                        text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2");
-                }
-                catch (BotRequestException ex)
-                {
-                    if (ex.ErrorCode / 100 != 4)
-                    {
-                        throw;
-                    }
-                }
-            }
+            await client.SendMessageAsync(chatId, text: GetResourceString("Help"), cancellationToken: cancellationToken);
         }
 
         private static TelegramBotClient GetTelegramBotClient(IServiceProvider serviceProvider)
@@ -323,7 +305,7 @@ namespace FiveLetters
             return new SecretToken(serviceProvider.GetService<AppSettings>()!.SecretToken);
         }
 
-        public static void Run(string[] args)
+        public static async Task RunAsync(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -346,12 +328,12 @@ namespace FiveLetters
             }
 
             app.MapPost("/update",
-                (Update update, [FromHeader(Name = "X-Telegram-Bot-Api-Secret-Token")] string secretToken, BotApp botApp) =>
-                    botApp.ProcessUpdate(update, secretToken))
+               async (CancellationToken cancellationToken, Update update, [FromHeader(Name = "X-Telegram-Bot-Api-Secret-Token")] string secretToken, BotApp botApp) =>
+                   await botApp.ProcessUpdateAsync(secretToken, update, cancellationToken))
                 .WithName("Update")
                 .WithOpenApi();
 
-            app.Run();
+            await app.RunAsync();
         }
     }
 }
