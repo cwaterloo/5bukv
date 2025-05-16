@@ -5,11 +5,14 @@ using Telegram.BotAPI.AvailableTypes;
 using Telegram.BotAPI.GettingUpdates;
 using FiveLetters.Data;
 using System.Text;
-using Protobuf.Text;
 using Telegram.BotAPI.UpdatingMessages;
 using System.Resources;
 using System.Globalization;
 using Google.Protobuf;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace FiveLetters
 {
@@ -22,9 +25,40 @@ namespace FiveLetters
         Error
     }
 
-    public sealed class BotApp(TelegramBotClient client, Tree tree, CultureInfo cultureInfo, ResourceManager resourceManager)
+    public sealed class AppSettings(IConfiguration configuration)
     {
-        private string GetResourceString(string key) {
+        public string ApiToken => configuration.GetSection("AppSettings:ApiToken").Value!;
+        public string Culture => configuration.GetSection("AppSettings:Culture").Value!;
+        public string TreeFile => configuration.GetSection("AppSettings:TreeFile").Value!;
+        public string SecretToken => configuration.GetSection("AppSettings:SecretToken").Value!;
+    }
+
+    public sealed class SecretToken(string token)
+    {
+        public string Value => token;
+    }
+
+    public sealed class BotApp(TelegramBotClient client, Tree tree, CultureInfo cultureInfo, ResourceManager resourceManager, SecretToken token)
+    {
+        private void ProcessUpdate(Update update, string secretToken)
+        {
+            if (token.Value != secretToken)
+            {
+                return;
+            }
+
+            if (update.Message != null)
+            {
+                ProcessMessage(update.Message);
+            }
+            else if (update.CallbackQuery != null)
+            {
+                ProcessCallbackQuery(update.CallbackQuery);
+            }
+        }
+
+        private string GetResourceString(string key)
+        {
             return resourceManager.GetString(key, cultureInfo)!;
         }
 
@@ -88,9 +122,9 @@ namespace FiveLetters
                 Enum.GetValues<Data.Evaluation>().Length) % Enum.GetValues<Data.Evaluation>().Length);
         }
 
-        private static string ToText(char letter, Data.Evaluation evaluation)
+        private string ToText(char letter, Data.Evaluation evaluation)
         {
-            return string.Format("{0}{1}", GetEvaluationChar(evaluation), letter);
+            return string.Format(cultureInfo, "{0}{1}", GetEvaluationChar(evaluation), letter);
         }
 
         private Msg? MakeMsg(GameState gameState)
@@ -242,9 +276,12 @@ namespace FiveLetters
 
             GameState gameState;
 
-            try {
+            try
+            {
                 gameState = GameStateSerializer.Load(callbackQuery.Data);
-            } catch (Exception ex) when (ex is FormatException || ex is InvalidProtocolBufferException) {
+            }
+            catch (Exception ex) when (ex is FormatException || ex is InvalidProtocolBufferException)
+            {
                 return;
             }
 
@@ -253,7 +290,7 @@ namespace FiveLetters
             {
                 try
                 {
-                    client.EditMessageText(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId,
+                    client.EditMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId,
                         text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2");
                 }
                 catch (BotRequestException ex)
@@ -266,83 +303,55 @@ namespace FiveLetters
             }
         }
 
-        private void ProcessUpdates(IEnumerable<Update> updates)
-        {
-            foreach (Update update in updates)
-            {
-                if (update.Message != null)
-                {
-                    ProcessMessage(update.Message);
-                }
-                else if (update.CallbackQuery != null)
-                {
-                    ProcessCallbackQuery(update.CallbackQuery);
-                }
-            }
-        }
-
-        private void ProcessUpdates()
-        {
-            int? lastUpdateId = null;
-            do
-            {
-                IEnumerable<Update> updates = lastUpdateId.HasValue ?
-                    client.GetUpdates(lastUpdateId.Value + 1) : client.GetUpdates();
-                lastUpdateId = updates.LastOrDefault()?.UpdateId;
-                ProcessUpdates(updates);
-            } while (lastUpdateId != null);
-        }
-
-        private void Run()
-        {
-            while (true)
-            {
-                try {
-                    ProcessUpdates();
-                } catch (BotRequestException) {
-                    
-                }
-                Task.Delay(5000);
-            }
-        }
-
-        private static BotConfig LoadConfig(string configPath)
-        {
-            using StreamReader reader = new(configPath, Encoding.UTF8);
-            return new TextParser(TextParser.Settings.Default).Parse<BotConfig>(reader);
-        }
-
         private static TelegramBotClient GetTelegramBotClient(IServiceProvider serviceProvider)
         {
-            return new(serviceProvider.GetService<BotConfig>()!.ApiToken);
+            return new(serviceProvider.GetService<AppSettings>()!.ApiToken);
         }
 
         private static Tree GetTree(IServiceProvider serviceProvider)
         {
-            return TreeSerializer.Load(serviceProvider.GetService<BotConfig>()!.TreeFile);
+            return TreeSerializer.Load(serviceProvider.GetService<AppSettings>()!.TreeFile);
         }
 
-        private static ResourceManager GetResourceManager(IServiceProvider serviceProvider) {
-            return new ResourceManager("FiveLetters.Resources.Strings", typeof(BotApp).Assembly);
+        private static CultureInfo GetCultureInfo(IServiceProvider serviceProvider)
+        {
+            return new CultureInfo(serviceProvider.GetService<AppSettings>()!.Culture, false);
         }
 
-        private static CultureInfo GetCultureInfo(IServiceProvider serviceProvider) {
-
-            return new CultureInfo(serviceProvider.GetService<BotConfig>()!.Culture, false);
+        private static SecretToken GetSecretToken(IServiceProvider serviceProvider)
+        {
+            return new SecretToken(serviceProvider.GetService<AppSettings>()!.SecretToken);
         }
 
         public static void Run(string[] args)
         {
-            var services = new ServiceCollection();
-            services.AddSingleton<BotApp>();
-            services.AddSingleton(LoadConfig(args[0]));
-            services.AddSingleton(GetTree);
-            services.AddSingleton(GetTelegramBotClient);
-            services.AddSingleton(GetResourceManager);
-            services.AddSingleton(GetCultureInfo);
+            var builder = WebApplication.CreateBuilder(args);
 
-            ServiceProvider serviceProvider = services.BuildServiceProvider();
-            serviceProvider.GetService<BotApp>()?.Run();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+            builder.Services.AddSingleton(GetTree);
+            builder.Services.AddSingleton(GetTelegramBotClient);
+            builder.Services.AddSingleton(new ResourceManager("FiveLetters.Resources.Strings", typeof(BotApp).Assembly));
+            builder.Services.AddSingleton(GetCultureInfo);
+            builder.Services.AddSingleton(GetSecretToken);
+            builder.Services.AddSingleton<AppSettings>();
+            builder.Services.AddSingleton<BotApp>();
+
+            var app = builder.Build();
+
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.MapPost("/update",
+                (Update update, [FromHeader(Name = "X-Telegram-Bot-Api-Secret-Token")] string secretToken, BotApp botApp) =>
+                    botApp.ProcessUpdate(update, secretToken))
+                .WithName("Update")
+                .WithOpenApi();
+
+            app.Run();
         }
     }
 }
