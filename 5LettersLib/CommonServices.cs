@@ -28,14 +28,16 @@ namespace FiveLetters
         private static Config GetConfig(IServiceProvider serviceProvider)
         {
             IConfiguration configuration = serviceProvider.GetService<IConfiguration>()!;
-            return new Config {
+            return new Config
+            {
                 ApiToken = configuration.GetSection("AppSettings").GetValue<string>("ApiToken"),
                 WebHookUrl = GetUri(configuration.GetSection("AppSettings").GetValue<string>("WebHookUrl")),
                 SecretToken = configuration.GetSection("AppSettings").GetValue<string>("SecretToken"),
                 PublicKeyFilename = configuration.GetSection("AppSettings").GetValue<string>("PublicKeyFilename"),
                 IPAddress = GetIPAddress(configuration.GetSection("AppSettings").GetValue<string>("IPAddress")),
                 CultureName = configuration.GetSection("AppSettings").GetValue<string>("CultureName"),
-                TreeFilename = configuration.GetSection("AppSettings").GetValue<string>("TreeFilename")
+                TreeFilename = configuration.GetSection("AppSettings").GetValue<string>("TreeFilename"),
+                PathPattern = configuration.GetSection("AppSettings").GetValue<string>("PathPattern")
             };
         }
 

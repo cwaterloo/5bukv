@@ -291,7 +291,7 @@ namespace FiveLetters
                 app.UseSwaggerUI();
             }
 
-            app.MapPost("/",
+            app.MapPost(app.Services.GetService<Config>()!.PathPattern!,
                async (CancellationToken cancellationToken, Update update,
                     [FromHeader(Name = "X-Telegram-Bot-Api-Secret-Token")] string secretToken, BotApp botApp) =>
                    await botApp.ProcessUpdateAsync(secretToken, update, cancellationToken))
