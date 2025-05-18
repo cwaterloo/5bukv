@@ -10,3 +10,6 @@ HelpTemplate=*Помощь:* отправьте {0}\\.\n
 Back=Назад
 Forward=Вперед
 Help=Нужно сделать
+StartDescription=Начать новую сессию
+HelpDescription=Помощь
+ 

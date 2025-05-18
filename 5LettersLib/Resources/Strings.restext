@@ -10,3 +10,5 @@ HelpTemplate=*Help:* send {0}\\.\n
 Back=Back
 Forward=Forward
 Help=TODO
+StartDescription=Start new session
+HelpDescription=Help

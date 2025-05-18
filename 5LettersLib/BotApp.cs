@@ -6,15 +6,13 @@ using FiveLetters.Data;
 using System.Text;
 using Telegram.BotAPI.UpdatingMessages;
 using Telegram.BotAPI.Extensions;
-using System.Resources;
-using System.Globalization;
 using Google.Protobuf;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
 using Telegram.BotAPI.GettingUpdates;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using System.Globalization;
 
 namespace FiveLetters
 {
@@ -27,24 +25,11 @@ namespace FiveLetters
         Error
     }
 
-    public sealed class AppSettings(IConfiguration configuration)
-    {
-        public string ApiToken => configuration.GetSection("AppSettings:ApiToken").Value!;
-        public string Culture => configuration.GetSection("AppSettings:Culture").Value!;
-        public string TreeFile => configuration.GetSection("AppSettings:TreeFile").Value!;
-        public string SecretToken => configuration.GetSection("AppSettings:SecretToken").Value!;
-    }
-
-    public sealed class SecretToken(string token)
-    {
-        public string Value => token;
-    }
-
-    public sealed class BotApp(TelegramBotClient client, Tree tree, CultureInfo cultureInfo, ResourceManager resourceManager, SecretToken token) : SimpleTelegramBotBase
+    public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo, Config config) : SimpleTelegramBotBase
     {
         public async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
-            if (secretToken != token.Value)
+            if (secretToken != config.SecretToken)
             {
                 return Results.Unauthorized();
             }
@@ -108,11 +93,6 @@ namespace FiveLetters
             }
         }
 
-        private string GetResourceString(string key)
-        {
-            return resourceManager.GetString(key, cultureInfo)!;
-        }
-
         private static SessionStatus GetSessionStatus(bool noEdges, bool noWordsLeft)
         {
             if (noEdges)
@@ -127,9 +107,9 @@ namespace FiveLetters
         {
             return sessionStatus switch
             {
-                SessionStatus.InProgress => GetResourceString("InProgress"),
-                SessionStatus.Completed => GetResourceString("Completed"),
-                SessionStatus.Error => GetResourceString("Error"),
+                SessionStatus.InProgress => l10n.GetResourceString("InProgress"),
+                SessionStatus.Completed => l10n.GetResourceString("Completed"),
+                SessionStatus.Error => l10n.GetResourceString("Error"),
                 _ => throw new InvalidDataException(string.Format("Unknown enum value: {0}", sessionStatus)),
             };
         }
@@ -199,7 +179,7 @@ namespace FiveLetters
                 else
                 {
                     noWordsLeft = true;
-                    wordChain.Add(string.Format(cultureInfo, "\\[{0}\\]", GetResourceString("NoSuitableWords")));
+                    wordChain.Add(string.Format(cultureInfo, "\\[{0}\\]", l10n.GetResourceString("NoSuitableWords")));
                     break;
                 }
             }
@@ -214,15 +194,18 @@ namespace FiveLetters
             switch (sessionStatus)
             {
                 case SessionStatus.Completed:
-                    textBuilder.Append(string.Format(cultureInfo, GetResourceString("WordTemplate"), lastTree.Word));
+                    textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordTemplate"), lastTree.Word));
                     break;
                 case SessionStatus.InProgress:
-                    textBuilder.Append(string.Format(cultureInfo, GetResourceString("SuggestionTemplate"), lastTree.Word));
+                    textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("SuggestionTemplate"), lastTree.Word));
                     break;
             }
-            textBuilder.Append(string.Format(cultureInfo, GetResourceString("WordChainTemplate"), string.Join(" \\-\\> ", wordChain)));
-            textBuilder.Append(string.Format(cultureInfo, GetResourceString("StateTemplate"), GetSessionStatusText(sessionStatus)));
-            textBuilder.Append(string.Format(cultureInfo, GetResourceString("HelpTemplate"), "/help"));
+            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordChainTemplate"),
+                string.Join(" \\-\\> ", wordChain)));
+            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("StateTemplate"),
+                GetSessionStatusText(sessionStatus)));
+            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("HelpTemplate"),
+                "/help"));
 
             if (gameState.Chain.Count > 0)
             {
@@ -233,7 +216,8 @@ namespace FiveLetters
                     Evaluation = { Evaluation.Unpack(gameState.Chain[^1]).ToDataEvaluations() }
                 };
 
-                buttonRowTwo.Add(new InlineKeyboardButton(GetResourceString("Back")) { CallbackData = GameStateSerializer.Save(prevGameState) });
+                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Back")) {
+                    CallbackData = GameStateSerializer.Save(prevGameState) });
             }
 
             if (lastTree.Edges.Count != 0 && !noWordsLeft)
@@ -245,7 +229,8 @@ namespace FiveLetters
                     Evaluation = { GetDefaultEvaluation() }
                 };
 
-                buttonRowTwo.Add(new InlineKeyboardButton(GetResourceString("Forward")) { CallbackData = GameStateSerializer.Save(nextGameState) });
+                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Forward")) {
+                    CallbackData = GameStateSerializer.Save(nextGameState) });
 
                 // Letter buttons                
                 GameState letterGameState = gameState.Clone();
@@ -276,33 +261,15 @@ namespace FiveLetters
             Msg? msg = MakeMsg(MakeInitialGameState());
             if (msg != null)
             {
-                await client.SendMessageAsync(chatId, text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2", cancellationToken: cancellationToken);
+                await client.SendMessageAsync(chatId, text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2",
+                    cancellationToken: cancellationToken);
             }
         }
 
         private async Task ProcessHelpAsync(long chatId, CancellationToken cancellationToken)
         {
-            await client.SendMessageAsync(chatId, text: GetResourceString("Help"), cancellationToken: cancellationToken);
-        }
-
-        private static TelegramBotClient GetTelegramBotClient(IServiceProvider serviceProvider)
-        {
-            return new(serviceProvider.GetService<AppSettings>()!.ApiToken);
-        }
-
-        private static Tree GetTree(IServiceProvider serviceProvider)
-        {
-            return TreeSerializer.Load(serviceProvider.GetService<AppSettings>()!.TreeFile);
-        }
-
-        private static CultureInfo GetCultureInfo(IServiceProvider serviceProvider)
-        {
-            return new CultureInfo(serviceProvider.GetService<AppSettings>()!.Culture, false);
-        }
-
-        private static SecretToken GetSecretToken(IServiceProvider serviceProvider)
-        {
-            return new SecretToken(serviceProvider.GetService<AppSettings>()!.SecretToken);
+            await client.SendMessageAsync(chatId, text: l10n.GetResourceString("Help"),
+                cancellationToken: cancellationToken);
         }
 
         public static async Task RunAsync(string[] args)
@@ -311,13 +278,8 @@ namespace FiveLetters
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            builder.Services.AddSingleton(GetTree);
-            builder.Services.AddSingleton(GetTelegramBotClient);
-            builder.Services.AddSingleton(new ResourceManager("FiveLetters.Resources.Strings", typeof(BotApp).Assembly));
-            builder.Services.AddSingleton(GetCultureInfo);
-            builder.Services.AddSingleton(GetSecretToken);
-            builder.Services.AddSingleton<AppSettings>();
-            builder.Services.AddActivatedSingleton<BotApp>();
+            builder.Services.AddBotCommonServices();
+            builder.Services.AddActivatedSingleton<BotApp>();            
 
             var app = builder.Build();
 
@@ -327,8 +289,9 @@ namespace FiveLetters
                 app.UseSwaggerUI();
             }
 
-            app.MapPost("/update",
-               async (CancellationToken cancellationToken, Update update, [FromHeader(Name = "X-Telegram-Bot-Api-Secret-Token")] string secretToken, BotApp botApp) =>
+            app.MapPost("/Telegram/Bot/Update",
+               async (CancellationToken cancellationToken, Update update,
+                    [FromHeader(Name = "X-Telegram-Bot-Api-Secret-Token")] string secretToken, BotApp botApp) =>
                    await botApp.ProcessUpdateAsync(secretToken, update, cancellationToken))
                 .WithName("Update")
                 .WithOpenApi();

@@ -5,4 +5,6 @@
 5LettersBot/appsettings.Development.json
 5LettersLib/bin/**
 5LettersLib/obj/**
+WebHookSetter/bin/**
+WebHookSetter/obj/**
 .vscode/**
