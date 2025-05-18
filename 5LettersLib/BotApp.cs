@@ -278,8 +278,10 @@ namespace FiveLetters
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            builder.Services.AddSystemd();
             builder.Services.AddBotCommonServices();
-            builder.Services.AddActivatedSingleton<BotApp>();            
+            builder.Services.AddActivatedSingleton<BotApp>();
+            builder.Host.UseSystemd();
 
             var app = builder.Build();
 

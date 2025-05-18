@@ -15,6 +15,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.AutoActivation" Version="9.5.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="9.0.5" />
     <PackageReference Include="Protobuf.Text" Version="0.7.2" />
     <PackageReference Include="Telegram.BotAPI" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
