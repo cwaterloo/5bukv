@@ -41,6 +41,11 @@ namespace FiveLetters
             };
         }
 
+        private static SortedDictionary<int, int> GetStat(IServiceProvider serviceProvider)
+        {
+            return StatCollector.GetStat(serviceProvider.GetService<Tree>()!);
+        }
+
         private static IPAddress? GetIPAddress(string? value)
         {
             if (value == null)
@@ -69,6 +74,7 @@ namespace FiveLetters
             services.AddSingleton(GetCultureInfo);
             services.AddSingleton<L10n>();
             services.AddSingleton(GetConfig);
+            services.AddSingleton(GetStat);
         }
     }
 }

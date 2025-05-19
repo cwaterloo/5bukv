@@ -12,4 +12,4 @@ Forward=Вперед
 Help=Нужно сделать
 StartDescription=Начать новую сессию
 HelpDescription=Помощь
- 
+AttemptCountSlashWordsCount={0}/{1}

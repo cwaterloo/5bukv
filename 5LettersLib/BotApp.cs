@@ -25,7 +25,7 @@ namespace FiveLetters
         Error
     }
 
-    public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo, Config config) : SimpleTelegramBotBase
+    public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo, Config config, SortedDictionary<int, int> stat) : SimpleTelegramBotBase
     {
         public async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
@@ -268,7 +268,11 @@ namespace FiveLetters
 
         private async Task ProcessHelpAsync(long chatId, CancellationToken cancellationToken)
         {
-            await client.SendMessageAsync(chatId, text: l10n.GetResourceString("Help"),
+            StringBuilder stringBuilder = new(l10n.GetResourceString("Help"));
+            string formatTemplate = l10n.GetResourceString("AttemptCountSlashWordsCount");
+            stringBuilder.AppendJoin('\n', stat.Select(attemptCountToWordCount => string.Format(cultureInfo,
+                formatTemplate, attemptCountToWordCount.Key, attemptCountToWordCount.Value)));
+            await client.SendMessageAsync(chatId, text: stringBuilder.ToString(),
                 cancellationToken: cancellationToken);
         }
 
