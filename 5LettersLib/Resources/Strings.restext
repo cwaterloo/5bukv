@@ -13,3 +13,4 @@ Help=TODO
 StartDescription=Start new session
 HelpDescription=Help
 AttemptCountSlashWordsCount={0}/{1}
+VocabularySize=Vocabulary size \\(number of words\\): {0}.

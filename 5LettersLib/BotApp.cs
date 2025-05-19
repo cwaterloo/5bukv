@@ -269,9 +269,12 @@ namespace FiveLetters
         private async Task ProcessHelpAsync(long chatId, CancellationToken cancellationToken)
         {
             StringBuilder stringBuilder = new(l10n.GetResourceString("Help"));
+            stringBuilder.Append('\n');
             string formatTemplate = l10n.GetResourceString("AttemptCountSlashWordsCount");
             stringBuilder.AppendJoin('\n', stat.Select(attemptCountToWordCount => string.Format(cultureInfo,
                 formatTemplate, attemptCountToWordCount.Key, attemptCountToWordCount.Value)));
+            stringBuilder.Append('\n');
+            stringBuilder.AppendFormat(cultureInfo, l10n.GetResourceString("VocabularySize"), stat.Values.Sum());
             await client.SendMessageAsync(chatId, text: stringBuilder.ToString(),
                 cancellationToken: cancellationToken);
         }
