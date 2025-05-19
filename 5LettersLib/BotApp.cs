@@ -13,6 +13,7 @@ using Telegram.BotAPI.GettingUpdates;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 
 namespace FiveLetters
 {
@@ -25,7 +26,7 @@ namespace FiveLetters
         Error
     }
 
-    public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo, Config config, SortedDictionary<int, int> stat) : SimpleTelegramBotBase
+    public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo, Config config, SortedDictionary<int, int> stat, ILogger<BotApp> logger) : SimpleTelegramBotBase
     {
         public async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
@@ -48,6 +49,7 @@ namespace FiveLetters
         {
             if (exp.ErrorCode / 100 == 4)
             {
+                logger.LogWarning(exp, "Client BotRequestException.");
                 return Task.CompletedTask;
             }
 
