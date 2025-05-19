@@ -10,7 +10,8 @@ namespace FiveLetters
         public string? PublicKeyFilename { get; init; }
         public IPAddress? IPAddress { get; init; }
         public string? CultureName { get; init; }
-        public string? TreeFilename { get; init; }        
-        public string? PathPattern { get; init; }
+        public string? TreeFilename { get; init; }
+        public string? PathPattern { get; init; }        
+        public string? FeedbackEmail { get; init; }
     }
 }

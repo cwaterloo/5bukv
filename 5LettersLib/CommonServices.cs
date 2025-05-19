@@ -37,7 +37,8 @@ namespace FiveLetters
                 IPAddress = GetIPAddress(configuration.GetSection("AppSettings").GetValue<string>("IPAddress")),
                 CultureName = configuration.GetSection("AppSettings").GetValue<string>("CultureName"),
                 TreeFilename = configuration.GetSection("AppSettings").GetValue<string>("TreeFilename"),
-                PathPattern = configuration.GetSection("AppSettings").GetValue<string>("PathPattern")
+                PathPattern = configuration.GetSection("AppSettings").GetValue<string>("PathPattern"),
+                FeedbackEmail = configuration.GetSection("AppSettings").GetValue<string>("FeedbackEmail")
             };
         }
 
