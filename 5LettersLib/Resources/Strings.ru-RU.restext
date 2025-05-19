@@ -13,4 +13,4 @@ Help=Нужно сделать
 StartDescription=Начать новую сессию
 HelpDescription=Помощь
 AttemptCountSlashWordsCount={0}/{1}
-VocabularySize=Размер словаря \\(количество слов\\): {0}.
+VocabularySize=Размер словаря \\(количество слов\\): {0}\\.
