@@ -275,7 +275,7 @@ namespace FiveLetters
                 formatTemplate, attemptCountToWordCount.Key, attemptCountToWordCount.Value)));
             stringBuilder.Append('\n');
             stringBuilder.AppendFormat(cultureInfo, l10n.GetResourceString("VocabularySize"), stat.Values.Sum());
-            await client.SendMessageAsync(chatId, text: stringBuilder.ToString(),
+            await client.SendMessageAsync(chatId, text: stringBuilder.ToString(), parseMode: "MarkdownV2",
                 cancellationToken: cancellationToken);
         }
 
