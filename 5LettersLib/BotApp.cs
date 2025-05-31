@@ -18,6 +18,8 @@ namespace FiveLetters
 {
     internal record Msg(string Text, InlineKeyboardMarkup? Markup);
 
+    internal record ChainStep(List<string> WordChain, List<Data.Evaluation> DefaultEvaluation, SessionStatus SessionStatus);
+
     internal enum SessionStatus
     {
         InProgress,
@@ -164,18 +166,13 @@ namespace FiveLetters
             return string.Format(cultureInfo, "{0}{1}", GetEvaluationChar(evaluation), letter);
         }
 
-        private Msg? MakeMsg(GameState gameState)
+        private ChainStep GetChainStep(IList<int> chain)
         {
-            if (gameState.Evaluation.Count != Word.WordLetterCount)
-            {
-                return null;
-            }
-
             bool noWordsLeft = false;
             Tree lastTree = tree;
             List<string> wordChain = [];
             wordChain.Add(lastTree.Word);
-            foreach (int state in gameState.Chain)
+            foreach (int state in chain)
             {
                 if (lastTree.Edges.TryGetValue(state, out Tree subtree))
                 {
@@ -190,26 +187,37 @@ namespace FiveLetters
                 }
             }
 
-            SessionStatus sessionStatus = GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft);
+            return new ChainStep(wordChain, GetDefaultEvaluation().ToList(), GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft));
+        }
+
+        private Msg? MakeMsg(GameState gameState)
+        {
+            if (gameState.Evaluation.Count != Word.WordLetterCount)
+            {
+                return null;
+            }
+
+            ChainStep chainStep = GetChainStep(gameState.Chain);
+            string lastWord = chainStep.WordChain[^1];
 
             List<List<InlineKeyboardButton>> buttons = [];
             List<InlineKeyboardButton> buttonRowOne = [];
             List<InlineKeyboardButton> buttonRowTwo = [];
 
             StringBuilder textBuilder = new();
-            switch (sessionStatus)
+            switch (chainStep.SessionStatus)
             {
                 case SessionStatus.Completed:
-                    textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordTemplate"), lastTree.Word));
+                    textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordTemplate"), lastWord));
                     break;
                 case SessionStatus.InProgress:
-                    textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("SuggestionTemplate"), lastTree.Word));
+                    textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("SuggestionTemplate"), lastWord));
                     break;
             }
             textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordChainTemplate"),
-                string.Join(" \\-\\> ", wordChain)));
+                string.Join(" \\-\\> ", chainStep.WordChain)));
             textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("StateTemplate"),
-                GetSessionStatusText(sessionStatus)));
+                GetSessionStatusText(chainStep.SessionStatus)));
             textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("HelpTemplate"),
                 "/help"));
 
@@ -222,17 +230,19 @@ namespace FiveLetters
                     Evaluation = { Evaluation.Unpack(gameState.Chain[^1]).ToDataEvaluations() }
                 };
 
-                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Back")) {
-                    CallbackData = GameStateSerializer.Save(prevGameState) });
+                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Back"))
+                {
+                    CallbackData = GameStateSerializer.Save(prevGameState)
+                });
             }
 
-            if (sessionStatus == SessionStatus.InProgress)
+            if (chainStep.SessionStatus == SessionStatus.InProgress)
             {
                 // Forward button
                 GameState nextGameState = new()
                 {
-                    Chain = { gameState.Chain.Append(Evaluation.FromDataEvaluations(gameState.Evaluation, lastTree.Word).Pack()) },
-                    Evaluation = { GetDefaultEvaluation() }
+                    Chain = { gameState.Chain.Append(Evaluation.FromDataEvaluations(gameState.Evaluation, lastWord).Pack()) },
+                    Evaluation = { chainStep.DefaultEvaluation }
                 };
 
                 buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Forward"))
@@ -245,7 +255,7 @@ namespace FiveLetters
                 for (int i = 0; i < Word.WordLetterCount; ++i)
                 {
                     letterGameState.Evaluation[i] = Next(letterGameState.Evaluation[i]);
-                    buttonRowOne.Add(new InlineKeyboardButton(ToText(lastTree.Word[i], gameState.Evaluation[i]))
+                    buttonRowOne.Add(new InlineKeyboardButton(ToText(lastWord[i], gameState.Evaluation[i]))
                     { CallbackData = GameStateSerializer.Save(letterGameState) });
                     letterGameState.Evaluation[i] = Prev(letterGameState.Evaluation[i]);
                 }
