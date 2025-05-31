@@ -16,7 +16,7 @@ using System.Globalization;
 
 namespace FiveLetters
 {
-    internal record Msg(string Text, InlineKeyboardMarkup Markup);
+    internal record Msg(string Text, InlineKeyboardMarkup? Markup);
 
     internal enum SessionStatus
     {
@@ -85,6 +85,12 @@ namespace FiveLetters
             }
 
             GameState gameState = GameStateSerializer.Load(callbackQuery.Data);
+            if (gameState.Status == Status.ToBeDeleted)
+            {
+                await client.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
+                return;
+            }
+
             Msg? msg = MakeMsg(gameState);
             if (msg != null)
             {
@@ -207,7 +213,7 @@ namespace FiveLetters
             textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("HelpTemplate"),
                 "/help"));
 
-            if (gameState.Chain.Count > 0)
+            if (gameState.Chain.Count > 0 && gameState.Status == Status.Undefined)
             {
                 // Back button
                 GameState prevGameState = new()
@@ -220,7 +226,7 @@ namespace FiveLetters
                     CallbackData = GameStateSerializer.Save(prevGameState) });
             }
 
-            if (lastTree.Edges.Count != 0 && !noWordsLeft)
+            if (sessionStatus == SessionStatus.InProgress)
             {
                 // Forward button
                 GameState nextGameState = new()
@@ -229,8 +235,10 @@ namespace FiveLetters
                     Evaluation = { GetDefaultEvaluation() }
                 };
 
-                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Forward")) {
-                    CallbackData = GameStateSerializer.Save(nextGameState) });
+                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Forward"))
+                {
+                    CallbackData = GameStateSerializer.Save(nextGameState)
+                });
 
                 // Letter buttons                
                 GameState letterGameState = gameState.Clone();
@@ -241,6 +249,24 @@ namespace FiveLetters
                     { CallbackData = GameStateSerializer.Save(letterGameState) });
                     letterGameState.Evaluation[i] = Prev(letterGameState.Evaluation[i]);
                 }
+            }
+            else if (gameState.Status == Status.Undefined)
+            {
+                GameState sealedGameState = gameState.Clone();
+                sealedGameState.Status = Status.ToBeSealed;
+
+                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Seal"))
+                {
+                    CallbackData = GameStateSerializer.Save(sealedGameState)
+                });
+
+                GameState deletedGameState = gameState.Clone();
+                deletedGameState.Status = Status.ToBeDeleted;
+
+                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Delete"))
+                {
+                    CallbackData = GameStateSerializer.Save(deletedGameState)
+                });
             }
 
             if (buttonRowOne.Count > 0)
@@ -253,7 +279,7 @@ namespace FiveLetters
                 buttons.Add(buttonRowTwo);
             }
 
-            return new Msg(textBuilder.ToString(), new InlineKeyboardMarkup(buttons));
+            return new Msg(textBuilder.ToString(), buttons.Count > 0 ? new InlineKeyboardMarkup(buttons) : null);
         }
 
         private async Task ProcessStartAsync(long chatId, CancellationToken cancellationToken)

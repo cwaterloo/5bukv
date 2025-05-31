@@ -15,4 +15,5 @@ HelpDescription=Помощь
 AttemptCountSlashWordsCount= \\* {0}/{1}
 VocabularySize=Размер словаря \\(количество слов\\): {0}\\.
 Feedback=Обратную связь направляйте на {0}\\.
-
+Seal=Запечатать
+Delete=Удалить

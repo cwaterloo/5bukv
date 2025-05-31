@@ -15,3 +15,5 @@ HelpDescription=Help
 AttemptCountSlashWordsCount={0}/{1}
 VocabularySize=Vocabulary size \\(number of words\\): {0}\\.
 Feedback=Send feedback to {0}\\.
+Seal=Seal
+Delete=Delete

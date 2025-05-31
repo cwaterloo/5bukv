@@ -8,7 +8,14 @@ enum Evaluation {
     EVALUATION_CORRECT = 2;
 }
 
+enum Status {
+    STATUS_UNDEFINED = 0;
+    STATUS_TO_BE_SEALED = 1;
+    STATUS_TO_BE_DELETED = 2;
+}
+
 message GameState {
     repeated int32 chain = 1 [packed = true];
     repeated Evaluation evaluation = 2 [packed = true];
+    Status status = 3;
 }
