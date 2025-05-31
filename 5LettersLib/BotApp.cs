@@ -181,14 +181,14 @@ namespace FiveLetters
                     List<Data.Evaluation> evaluations = [.. Evaluation.Unpack(state).ToDataEvaluations()];
                     for (int i = 0; i < Word.WordLetterCount; ++i)
                     {
-                        if (evaluations[i] != Data.Evaluation.Absent)
+                        switch (evaluations[i])
                         {
-                            presentLetters.Add(lastTree.Word[i]);
-                        }
-
-                        if (evaluations[i] == Data.Evaluation.Correct)
-                        {
-                            correctLetters[i] = lastTree.Word[i];
+                            case Data.Evaluation.Correct:
+                                correctLetters[i] = lastTree.Word[i];
+                                goto case Data.Evaluation.Present;
+                            case Data.Evaluation.Present:
+                                presentLetters.Add(lastTree.Word[i]);
+                                break;
                         }
                     }
                     lastTree = subtree;
