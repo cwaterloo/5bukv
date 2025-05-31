@@ -18,7 +18,11 @@ namespace FiveLetters
 {
     internal record Msg(string Text, InlineKeyboardMarkup? Markup);
 
-    internal record ChainStep(List<string> WordChain, List<Data.Evaluation> DefaultEvaluation, SessionStatus SessionStatus);
+    internal record LettersInfo(HashSet<char> PresentLetters, Dictionary<int, char> CorrectLetters);
+
+    internal record NextInfo(string? Word, int PackedEvaluations);
+
+    internal record ChainStep(List<string> WordChain, LettersInfo LettersInfo, SessionStatus SessionStatus, NextInfo NextInfo);
 
     internal enum SessionStatus
     {
@@ -122,6 +126,34 @@ namespace FiveLetters
             };
         }
 
+        private static IEnumerable<Data.Evaluation> GetDefaultEvaluation(string? word, LettersInfo lettersInfo)
+        {
+            if (word == null)
+            {
+                foreach (Data.Evaluation evaluation in GetDefaultEvaluation())
+                {
+                    yield return evaluation;
+                }
+                yield break;
+            }
+
+            for (int i = 0; i < Word.WordLetterCount; ++i)
+            {
+                if (lettersInfo.CorrectLetters.TryGetValue(i, out char value) && value == word[i])
+                {
+                    yield return Data.Evaluation.Correct;
+                }
+                else if (lettersInfo.PresentLetters.Contains(word[i]))
+                {
+                    yield return Data.Evaluation.Present;
+                }
+                else
+                {
+                    yield return Data.Evaluation.Absent;
+                }
+            }
+        }
+
         private static IEnumerable<Data.Evaluation> GetDefaultEvaluation()
         {
             for (int i = 0; i < Word.WordLetterCount; ++i)
@@ -166,7 +198,24 @@ namespace FiveLetters
             return string.Format(cultureInfo, "{0}{1}", GetEvaluationChar(evaluation), letter);
         }
 
-        private ChainStep GetChainStep(IList<int> chain)
+        private static void UpdatePresence(IReadOnlyList<Data.Evaluation> evaluations, string word,
+            HashSet<char> presentLetters, Dictionary<int, char> correctLetters)
+        {
+            for (int i = 0; i < Word.WordLetterCount; ++i)
+            {
+                switch (evaluations[i])
+                {
+                    case Data.Evaluation.Correct:
+                        correctLetters[i] = word[i];
+                        goto case Data.Evaluation.Present;
+                    case Data.Evaluation.Present:
+                        presentLetters.Add(word[i]);
+                        break;
+                }
+            }
+        }
+
+        private ChainStep GetChainStep(IReadOnlyList<int> chain, IReadOnlyList<Data.Evaluation> currentWordEvaluations)
         {
             bool noWordsLeft = false;
             Tree lastTree = tree;
@@ -178,19 +227,7 @@ namespace FiveLetters
             {
                 if (lastTree.Edges.TryGetValue(state, out Tree subtree))
                 {
-                    List<Data.Evaluation> evaluations = [.. Evaluation.Unpack(state).ToDataEvaluations()];
-                    for (int i = 0; i < Word.WordLetterCount; ++i)
-                    {
-                        switch (evaluations[i])
-                        {
-                            case Data.Evaluation.Correct:
-                                correctLetters[i] = lastTree.Word[i];
-                                goto case Data.Evaluation.Present;
-                            case Data.Evaluation.Present:
-                                presentLetters.Add(lastTree.Word[i]);
-                                break;
-                        }
-                    }
+                    UpdatePresence([.. Evaluation.Unpack(state).ToDataEvaluations()], lastTree.Word, presentLetters, correctLetters);
                     lastTree = subtree;
                     wordChain.Add(lastTree.Word);
                 }
@@ -202,24 +239,11 @@ namespace FiveLetters
                 }
             }
 
-            List<Data.Evaluation> defaultEvaluations = [];
-            for (int i = 0; i < Word.WordLetterCount; ++i)
-            {
-                if (correctLetters.TryGetValue(i, out char value) && value == lastTree.Word[i])
-                {
-                    defaultEvaluations.Add(Data.Evaluation.Correct);
-                }
-                else if (presentLetters.Contains(lastTree.Word[i]))
-                {
-                    defaultEvaluations.Add(Data.Evaluation.Present);
-                }
-                else
-                {
-                    defaultEvaluations.Add(Data.Evaluation.Absent);
-                }
-            }
-
-            return new ChainStep(wordChain, defaultEvaluations, GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft));
+            int packedEvaluations = Evaluation.FromDataEvaluations(currentWordEvaluations, lastTree.Word).Pack();
+            string? word = lastTree.Edges.TryGetValue(packedEvaluations, out Tree nextTree) ? nextTree.Word : null;
+            UpdatePresence(currentWordEvaluations, lastTree.Word, presentLetters, correctLetters);
+            return new ChainStep(wordChain, new LettersInfo(presentLetters, correctLetters),
+                GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft), new NextInfo(word, packedEvaluations));
         }
 
         private Msg? MakeMsg(GameState gameState)
@@ -229,7 +253,7 @@ namespace FiveLetters
                 return null;
             }
 
-            ChainStep chainStep = GetChainStep(gameState.Chain);
+            ChainStep chainStep = GetChainStep(gameState.Chain, gameState.Evaluation);
             string lastWord = chainStep.WordChain[^1];
 
             List<List<InlineKeyboardButton>> buttons = [];
@@ -273,8 +297,8 @@ namespace FiveLetters
                 // Forward button
                 GameState nextGameState = new()
                 {
-                    Chain = { gameState.Chain.Append(Evaluation.FromDataEvaluations(gameState.Evaluation, lastWord).Pack()) },
-                    Evaluation = { chainStep.DefaultEvaluation }
+                    Chain = { gameState.Chain.Append(chainStep.NextInfo.PackedEvaluations) },
+                    Evaluation = { GetDefaultEvaluation(chainStep.NextInfo.Word, chainStep.LettersInfo) }
                 };
 
                 buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Forward"))
