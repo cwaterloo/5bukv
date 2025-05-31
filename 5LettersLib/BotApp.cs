@@ -172,10 +172,25 @@ namespace FiveLetters
             Tree lastTree = tree;
             List<string> wordChain = [];
             wordChain.Add(lastTree.Word);
+            HashSet<char> presentLetters = [];
+            Dictionary<int, char> correctLetters = [];
             foreach (int state in chain)
             {
                 if (lastTree.Edges.TryGetValue(state, out Tree subtree))
                 {
+                    List<Data.Evaluation> evaluations = [.. Evaluation.Unpack(state).ToDataEvaluations()];
+                    for (int i = 0; i < Word.WordLetterCount; ++i)
+                    {
+                        if (evaluations[i] != Data.Evaluation.Absent)
+                        {
+                            presentLetters.Add(lastTree.Word[i]);
+                        }
+
+                        if (evaluations[i] == Data.Evaluation.Correct)
+                        {
+                            correctLetters[i] = lastTree.Word[i];
+                        }
+                    }
                     lastTree = subtree;
                     wordChain.Add(lastTree.Word);
                 }
@@ -187,7 +202,24 @@ namespace FiveLetters
                 }
             }
 
-            return new ChainStep(wordChain, GetDefaultEvaluation().ToList(), GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft));
+            List<Data.Evaluation> defaultEvaluations = [];
+            for (int i = 0; i < Word.WordLetterCount; ++i)
+            {
+                if (correctLetters.TryGetValue(i, out char value) && value == lastTree.Word[i])
+                {
+                    defaultEvaluations.Add(Data.Evaluation.Correct);
+                }
+                else if (presentLetters.Contains(lastTree.Word[i]))
+                {
+                    defaultEvaluations.Add(Data.Evaluation.Present);
+                }
+                else
+                {
+                    defaultEvaluations.Add(Data.Evaluation.Absent);
+                }
+            }
+
+            return new ChainStep(wordChain, defaultEvaluations, GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft));
         }
 
         private Msg? MakeMsg(GameState gameState)
