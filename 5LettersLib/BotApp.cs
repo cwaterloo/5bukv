@@ -13,16 +13,18 @@ using Telegram.BotAPI.GettingUpdates;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using System.Globalization;
+using System.Collections.Immutable;
+using System.Runtime.ExceptionServices;
 
 namespace FiveLetters
 {
     internal record Msg(string Text, InlineKeyboardMarkup? Markup);
 
-    internal record LettersInfo(HashSet<char> PresentLetters, Dictionary<int, char> CorrectLetters);
+    internal record LettersInfo(IImmutableSet<char> PresentLetters, IImmutableDictionary<int, char> CorrectLetters);
 
     internal record NextInfo(string? Word, int PackedEvaluations);
 
-    internal record ChainStep(List<string> WordChain, LettersInfo LettersInfo, SessionStatus SessionStatus, NextInfo NextInfo);
+    internal record ChainStep(IImmutableList<string> WordChain, LettersInfo LettersInfo, SessionStatus SessionStatus, NextInfo NextInfo);
 
     internal enum SessionStatus
     {
@@ -31,9 +33,10 @@ namespace FiveLetters
         Error
     }
 
-    public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo, Config config, SortedDictionary<int, int> stat) : SimpleTelegramBotBase
+    public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo,
+        Config config, ImmutableSortedDictionary<int, int> stat) : SimpleTelegramBotBase
     {
-        public async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
+        private async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
             if (secretToken != config.SecretToken)
             {
@@ -67,7 +70,8 @@ namespace FiveLetters
                 return Task.CompletedTask;
             }
 
-            throw new InvalidOperationException("Unknown exception.", exp);
+            ExceptionDispatchInfo.Capture(exp).Throw();
+            throw exp; // Unreacheable
         }
 
         protected override async Task OnMessageAsync(Message message, CancellationToken cancellationToken = default)
@@ -240,9 +244,10 @@ namespace FiveLetters
             }
 
             int packedEvaluations = Evaluation.FromDataEvaluations(currentWordEvaluations, lastTree.Word).Pack();
-            string? word = lastTree.Edges.TryGetValue(packedEvaluations, out Tree nextTree) ? nextTree.Word : null;
+            string? word = lastTree.Edges.GetValueOrDefault(packedEvaluations)?.Word;
             UpdatePresence(currentWordEvaluations, lastTree.Word, presentLetters, correctLetters);
-            return new ChainStep(wordChain, new LettersInfo(presentLetters, correctLetters),
+            return new ChainStep(wordChain.ToImmutableList(), new LettersInfo(presentLetters.ToImmutableHashSet(),
+                correctLetters.ToImmutableDictionary()),
                 GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft), new NextInfo(word, packedEvaluations));
         }
 

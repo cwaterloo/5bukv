@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Net;
 using System.Resources;
@@ -42,9 +43,9 @@ namespace FiveLetters
             };
         }
 
-        private static SortedDictionary<int, int> GetStat(IServiceProvider serviceProvider)
+        private static ImmutableSortedDictionary<int, int> GetStat(IServiceProvider serviceProvider)
         {
-            return StatCollector.GetStat(serviceProvider.GetService<Tree>()!);
+            return StatCollector.GetStat(serviceProvider.GetService<Tree>()!).ToImmutableSortedDictionary();
         }
 
         private static IPAddress? GetIPAddress(string? value)
