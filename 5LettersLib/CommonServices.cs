@@ -71,10 +71,43 @@ namespace FiveLetters
             return new Uri(value);
         }
 
+        private static string ConvertHelp(string[] helpLines)
+        {
+            StringBuilder builder = new();
+            bool state = false;
+            foreach (string helpLine in helpLines)
+            {
+                switch (state) {
+                    case false:
+                        if (helpLine == "")
+                        {
+                            state = true;
+                        }
+                        else
+                        {
+                            builder.Append(helpLine);
+                        }
+                        break;
+                    case true:
+                        if (helpLine == "")
+                        {
+                            builder.Append('\n');
+                        }
+                        else
+                        {
+                            builder.Append(' ').Append(helpLine);
+                        }
+                        state = false;
+                        break;
+                }
+            }
+            return builder.ToString();
+        }
+
         private static MemoizedValue<string> GetHelp(IServiceProvider serviceProvider)
         {
-            return new(() => File.ReadAllText(serviceProvider.GetService<Config>()!.HelpTextFilePath!,
-                Encoding.UTF8), TimeSpan.FromMinutes(1));
+            return new(() => ConvertHelp(File.ReadAllLines(serviceProvider.GetService<Config>()!.HelpTextFilePath!,
+                Encoding.UTF8)), TimeSpan.FromMinutes(1));
         }
 
         public static void AddBotCommonServices(this IServiceCollection services)
