@@ -3,10 +3,11 @@ The bot helps to guess English five\-letter words in Wordle game\.
 *How to guess words*
 
 The process of guessing words is built on interactive sessions\. A session consists of a series of moves\.
-Send /start to the bot in order to start a new session\. Each move begins with a bot turn\. The bot gives
-the user a guess and starts waiting for them to enter a response\. Each letter of the guessed word receives
-a corresponding button\. The buttons are arranged by the bot in order to receive user response\.
-The caption of each button consists of two parts\.
+Send /start to the bot in order to start a new session\.
+
+Each move begins with a bot turn\. The bot gives the user a guess and starts waiting for them to enter a response\.
+Each letter of the guessed word receives a corresponding button\. The buttons are arranged by the bot in order to
+receive user response\. The caption of each button consists of two parts\.
 
  \* Evaluation sign: \+, − or \= \(see below\)
 
