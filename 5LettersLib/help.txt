@@ -1,0 +1,44 @@
+The bot helps to guess English five\-letter words in Wordle game\.
+
+*How to guess words*
+
+The process of guessing words is built on interactive sessions\. A session consists of a series of moves\.
+Send /start to the bot in order to start a new session. Each move begins with a bot turn\. The bot gives
+the user a guess and starts waiting for them to enter a response\. Each letter of the guessed word receives
+a corresponding button\. The buttons are arranged by the bot in order to receive user response\.
+The caption of each button consists of two parts\.
+
+ \* Evaluation sign: \+, − or \= \(see below\)
+
+ \* The corresponding letter itself
+
+The \+ sign means that the letter is present in the hidden word, but is in the wrong place\.
+
+The − sign means that the hidden word has no such letter\.
+
+The \= sign means that the letter is present in the hidden word and is in the right place\.
+
+Pressing the buttons changes the states in loop: −, \+, \=\. Now it’s your turn to transfer
+the letters one by one to the desired state\. Press _Forward_ button to start the next move\.
+Once it’s pressed the one of the following three conditions occurs\.
+
+ \* The bot makes a new turn\. The scenario described above starts over\.
+
+ \* The bot reports that there are no suitable words\.
+
+ \* The bot reports that the word has been successfully guessed and shows it\.
+
+ At any step, you can press _Back_ button to go back along the chain and correct something\.
+
+ *Implementation details*
+
+ Sometimes the entered letter states might be changed if, for example, the user presses _Forward_ button first
+ and then immediately presses _Back_ button\. It happens when at least one letter occurs multiple times in the
+ guessed word\. If the repeated letter is marked with \+ or \= sign in one place and with − sign in another,
+ all the occurrences marked with − sign will be marked with \+ sign instead\. This allows the bot to not rely
+ so much on the words that have repeated letters\.
+
+ Guessing words is based on vocabulary\. The bot *cannot successfully guess a word* if it is not a part of the
+ vocabulary\. And vice versa, the bot is useless if *its guess is not acceptable*\.
+
+ *See chain length statistics below* \(format: attempt count/word count\)\.

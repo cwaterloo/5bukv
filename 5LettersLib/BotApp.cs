@@ -34,7 +34,7 @@ namespace FiveLetters
     }
 
     public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo,
-        Config config, ImmutableSortedDictionary<int, int> stat) : SimpleTelegramBotBase
+        Config config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString) : SimpleTelegramBotBase
     {
         private async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
@@ -71,7 +71,7 @@ namespace FiveLetters
             }
 
             ExceptionDispatchInfo.Capture(exp).Throw();
-            throw exp; // Unreacheable
+            throw exp; // Unreachable
         }
 
         protected override async Task OnMessageAsync(Message message, CancellationToken cancellationToken = default)
@@ -365,7 +365,7 @@ namespace FiveLetters
 
         private async Task ProcessHelpAsync(long chatId, CancellationToken cancellationToken)
         {
-            StringBuilder stringBuilder = new(l10n.GetResourceString("Help"));
+            StringBuilder stringBuilder = new(helpString.Get());
             stringBuilder.Append('\n');
             string formatTemplate = l10n.GetResourceString("AttemptCountSlashWordsCount");
             stringBuilder.AppendJoin('\n', stat.Select(attemptCountToWordCount => string.Format(cultureInfo,

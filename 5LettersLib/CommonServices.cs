@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Net;
 using System.Resources;
+using System.Text;
 using FiveLetters.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,17 +30,19 @@ namespace FiveLetters
         private static Config GetConfig(IServiceProvider serviceProvider)
         {
             IConfiguration configuration = serviceProvider.GetService<IConfiguration>()!;
+            IConfigurationSection appSettings = configuration.GetSection("AppSettings");
             return new Config
             {
-                ApiToken = configuration.GetSection("AppSettings").GetValue<string>("ApiToken"),
-                WebHookUrl = GetUri(configuration.GetSection("AppSettings").GetValue<string>("WebHookUrl")),
-                SecretToken = configuration.GetSection("AppSettings").GetValue<string>("SecretToken"),
-                PublicKeyFilename = configuration.GetSection("AppSettings").GetValue<string>("PublicKeyFilename"),
-                IPAddress = GetIPAddress(configuration.GetSection("AppSettings").GetValue<string>("IPAddress")),
-                CultureName = configuration.GetSection("AppSettings").GetValue<string>("CultureName"),
-                TreeFilename = configuration.GetSection("AppSettings").GetValue<string>("TreeFilename"),
-                PathPattern = configuration.GetSection("AppSettings").GetValue<string>("PathPattern"),
-                FeedbackEmail = configuration.GetSection("AppSettings").GetValue<string>("FeedbackEmail")
+                ApiToken = appSettings.GetValue<string>("ApiToken"),
+                WebHookUrl = GetUri(appSettings.GetValue<string>("WebHookUrl")),
+                SecretToken = appSettings.GetValue<string>("SecretToken"),
+                PublicKeyFilename = appSettings.GetValue<string>("PublicKeyFilename"),
+                IPAddress = GetIPAddress(appSettings.GetValue<string>("IPAddress")),
+                CultureName = appSettings.GetValue<string>("CultureName"),
+                TreeFilename = appSettings.GetValue<string>("TreeFilename"),
+                PathPattern = appSettings.GetValue<string>("PathPattern"),
+                FeedbackEmail = appSettings.GetValue<string>("FeedbackEmail"),
+                HelpTextFilePath = appSettings.GetValue<string>("HelpTextFilePath")
             };
         }
 
@@ -68,6 +71,12 @@ namespace FiveLetters
             return new Uri(value);
         }
 
+        private static MemoizedValue<string> GetHelp(IServiceProvider serviceProvider)
+        {
+            return new(() => File.ReadAllText(serviceProvider.GetService<Config>()!.HelpTextFilePath!,
+                Encoding.UTF8), TimeSpan.FromMinutes(1));
+        }
+
         public static void AddBotCommonServices(this IServiceCollection services)
         {
             services.AddSingleton(GetTree);
@@ -77,6 +86,7 @@ namespace FiveLetters
             services.AddSingleton<L10n>();
             services.AddSingleton(GetConfig);
             services.AddSingleton(GetStat);
+            services.AddSingleton(GetHelp);
         }
     }
 }
