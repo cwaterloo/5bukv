@@ -74,31 +74,25 @@ namespace FiveLetters
         private static string ConvertHelp(string[] helpLines)
         {
             StringBuilder builder = new();
-            bool state = false;
+            bool lastNewLine = true;
             foreach (string helpLine in helpLines)
             {
-                switch (state) {
-                    case false:
-                        if (helpLine == "")
-                        {
-                            state = true;
-                        }
-                        else
-                        {
-                            builder.Append(helpLine);
-                        }
-                        break;
-                    case true:
-                        if (helpLine == "")
-                        {
-                            builder.Append('\n');
-                        }
-                        else
-                        {
-                            builder.Append(' ').Append(helpLine);
-                        }
-                        state = false;
-                        break;
+                if (helpLine == "")
+                {
+                    builder.Append('\n');
+                    lastNewLine = true;
+                }
+                else
+                {
+                    if (lastNewLine)
+                    {
+                        lastNewLine = false;
+                    }
+                    else
+                    {
+                        builder.Append(' ');
+                    }
+                    builder.Append(helpLine);
                 }
             }
             return builder.ToString();
