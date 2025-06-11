@@ -15,6 +15,8 @@ using Microsoft.AspNetCore.Http;
 using System.Globalization;
 using System.Collections.Immutable;
 using System.Runtime.ExceptionServices;
+using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 
 namespace FiveLetters
 {
@@ -34,7 +36,8 @@ namespace FiveLetters
     }
 
     public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo,
-        Config config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString) : SimpleTelegramBotBase
+        Config config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
+        ILogger<BotApp> logger) : SimpleTelegramBotBase
     {
         private async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
@@ -97,11 +100,12 @@ namespace FiveLetters
             GameState gameState = GameStateSerializer.Load(callbackQuery.Data);
             if (gameState.Status == Status.ToBeDeleted)
             {
+                Log("Delete.", callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId);
                 await client.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
                 return;
             }
 
-            Msg? msg = MakeMsg(gameState);
+            Msg? msg = MakeMsg(gameState, callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId);
             if (msg != null)
             {
                 await client.EditMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId,
@@ -219,6 +223,27 @@ namespace FiveLetters
             }
         }
 
+        private static char ToChar(Data.Evaluation evaluation)
+        {
+            return evaluation switch
+            {
+                Data.Evaluation.Absent => 'g',
+                Data.Evaluation.Correct => 'y',
+                Data.Evaluation.Present => 'w',
+                _ => throw new InvalidDataException(string.Format("Unknown enum value: {0}", evaluation)),
+            };
+        }
+
+        private static string ToString(IReadOnlyList<Data.Evaluation> evaluations)
+        {
+            StringBuilder builder = new();
+            foreach (Data.Evaluation evaluation in evaluations)
+            {
+                builder.Append(ToChar(evaluation));
+            }
+            return builder.ToString();
+        }
+
         private ChainStep GetChainStep(IReadOnlyList<int> chain, IReadOnlyList<Data.Evaluation> currentWordEvaluations)
         {
             bool noWordsLeft = false;
@@ -251,7 +276,22 @@ namespace FiveLetters
                 GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft), new NextInfo(word, packedEvaluations));
         }
 
-        private Msg? MakeMsg(GameState gameState)
+        private void LogState(string chain, IReadOnlyList<Data.Evaluation> evaluations, SessionStatus sessionStatus,
+            bool isSealed, long chatId, int? messageId)
+        {
+            if (sessionStatus == SessionStatus.InProgress)
+            {
+                Log(string.Format(CultureInfo.InvariantCulture,
+                    "Move: {0}, Evaluations: {1}.", chain, ToString(evaluations)), chatId, messageId);
+            }
+            else
+            {
+                Log(string.Format(CultureInfo.InvariantCulture,
+                    "Move: {0}, Status: {1}, Sealed: {2}.", chain, sessionStatus, isSealed), chatId, messageId);
+            }
+        }
+
+        private Msg? MakeMsg(GameState gameState, long chatId, int? messageId = null)
         {
             if (gameState.Evaluation.Count != Word.WordLetterCount)
             {
@@ -275,8 +315,9 @@ namespace FiveLetters
                     textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("SuggestionTemplate"), lastWord));
                     break;
             }
-            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordChainTemplate"),
-                string.Join(" \\-\\> ", chainStep.WordChain)));
+            string chain = string.Join(" \\-\\> ", chainStep.WordChain);
+            LogState(chain, gameState.Evaluation, chainStep.SessionStatus, gameState.Status == Status.ToBeSealed, chatId, messageId);
+            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordChainTemplate"), chain));
             textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("StateTemplate"),
                 GetSessionStatusText(chainStep.SessionStatus)));
             textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("HelpTemplate"),
@@ -355,7 +396,7 @@ namespace FiveLetters
 
         private async Task ProcessStartAsync(long chatId, CancellationToken cancellationToken)
         {
-            Msg? msg = MakeMsg(MakeInitialGameState());
+            Msg? msg = MakeMsg(MakeInitialGameState(), chatId);
             if (msg != null)
             {
                 await client.SendMessageAsync(chatId, text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2",
@@ -363,8 +404,23 @@ namespace FiveLetters
             }
         }
 
+        private void Log(string message, long chatId, int? messageId = null)
+        {
+            string chatIdHash = Convert.ToBase64String(SHA3_256.HashData(BitConverter.GetBytes(chatId)));
+            if (messageId.HasValue)
+            {
+                string messageIdHash = Convert.ToBase64String(SHA3_256.HashData(BitConverter.GetBytes(messageId.Value)));
+                logger.LogDebug("{chatIdHash}_{messageIdHash}: {message}", chatIdHash, messageIdHash, message);
+            }
+            else
+            {
+                logger.LogDebug("{chatIdHash}: {message}", chatIdHash, message);
+            }
+        }
+
         private async Task ProcessHelpAsync(long chatId, CancellationToken cancellationToken)
         {
+            Log("Help.", chatId);
             StringBuilder stringBuilder = new(helpString.Get());
             stringBuilder.Append('\n');
             string formatTemplate = l10n.GetResourceString("AttemptCountSlashWordsCount");
