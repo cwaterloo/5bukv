@@ -276,9 +276,10 @@ namespace FiveLetters
                 GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft), new NextInfo(word, packedEvaluations));
         }
 
-        private void LogState(string chain, IReadOnlyList<Data.Evaluation> evaluations, SessionStatus sessionStatus,
+        private void LogState(IImmutableList<string> wordChain, IReadOnlyList<Data.Evaluation> evaluations, SessionStatus sessionStatus,
             bool isSealed, long chatId, int? messageId)
         {
+            string chain = string.Join(" -> ", wordChain);
             if (sessionStatus == SessionStatus.InProgress)
             {
                 Log(string.Format(CultureInfo.InvariantCulture,
@@ -315,9 +316,10 @@ namespace FiveLetters
                     textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("SuggestionTemplate"), lastWord));
                     break;
             }
-            string chain = string.Join(" \\-\\> ", chainStep.WordChain);
-            LogState(chain, gameState.Evaluation, chainStep.SessionStatus, gameState.Status == Status.ToBeSealed, chatId, messageId);
-            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordChainTemplate"), chain));
+            LogState(chainStep.WordChain, gameState.Evaluation, chainStep.SessionStatus,
+                gameState.Status == Status.ToBeSealed, chatId, messageId);
+            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordChainTemplate"),
+                string.Join(" \\-\\> ", chainStep.WordChain)));
             textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("StateTemplate"),
                 GetSessionStatusText(chainStep.SessionStatus)));
             textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("HelpTemplate"),
