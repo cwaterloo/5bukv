@@ -4,23 +4,25 @@ namespace FiveLetters
 {
     public sealed class TreeGenerator
     {
-        private readonly List<Word> globalWords;
+        private readonly List<Word> attackWords;
 
-        private TreeGenerator(List<Word> globalWords) {
-            this.globalWords = globalWords;
+        private TreeGenerator(List<Word> attackWords)
+        {
+            this.attackWords = attackWords;
         }
 
-        public static Tree Get(List<Word> globalWords)
+        public static Tree Get(List<Word> globalWords, List<Word> attackWords)
         {
-            if (globalWords.Count <= 0) {
+            if (globalWords.Count <= 0 || attackWords.Count <= 0)
+            {
                 throw new ArgumentException("List of words must not be empty.");
             }
-            return new TreeGenerator(globalWords).Make(globalWords);
+            return new TreeGenerator(attackWords).Make(globalWords);
         }
 
         private Tree Make(List<Word> candidates)
         {
-            Word guess = AI.GetCandidate(candidates, globalWords);
+            Word guess = AI.GetCandidate(candidates, attackWords);
             Dictionary<int, List<Word>> stateWords = [];
             foreach (Word hiddenWord in candidates)
             {

@@ -5,28 +5,59 @@ using FiveLetters.Data;
 namespace FiveLetters
 {
     public static class ConsoleApp
-    {        
+    {
+        private record WordCollection
+        {
+            public List<string> AttackWords { get; init; } = [];
+            public List<string> GlobalWords { get; init; } = [];
+        };
         private readonly record struct LetterAndColors(Letter Letter, ConsoleColor ForegroundColor, ConsoleColor BackgroundColor);
 
-        private static List<string> LoadWords(string filename)
+        private static WordCollection LoadWords(IEnumerable<string> filenames)
         {
-            HashSet<string> words = [];
-            bool noDuplicates = true;
-            using (StreamReader reader = new(filename, Encoding.UTF8))
+            HashSet<string> globalWords = [];
+            HashSet<string>? attackWords = null;
+
+            foreach (string filename in filenames)
             {
-                string? word;
-                while ((word = reader.ReadLine()) != null)
+                HashSet<string> words = [];
+                bool noDuplicates = true;
+                using (StreamReader reader = new(filename, Encoding.UTF8))
                 {
-                    noDuplicates &= words.Add(word);
+                    string? word;
+                    while ((word = reader.ReadLine()) != null)
+                    {
+                        noDuplicates &= words.Add(word);
+                    }
+                }
+
+                if (!noDuplicates)
+                {
+                    Console.WriteLine("The dictionary `{0}` contains duplicates.", filename);
+                }
+
+                globalWords.UnionWith(words);
+
+                if (attackWords == null)
+                {
+                    attackWords = words;
+                }
+                else
+                {
+                    attackWords.IntersectWith(words);
                 }
             }
 
-            if (!noDuplicates)
+            if (attackWords == null)
             {
-                Console.WriteLine("The dictionary contains duplicates.");
+                attackWords = [];
             }
 
-            return [.. words.Order()];
+            return new WordCollection
+            {
+                AttackWords = [.. attackWords.Order()],
+                GlobalWords = [.. globalWords.Order()]
+            };
         }
 
         private static int HiddenWordGame(Word hiddenWord, Tree tree, Alphabet alphabet)
@@ -35,7 +66,7 @@ namespace FiveLetters
             int attemptCount = 1;
             while (guess != hiddenWord)
             {
-                tree = tree.Edges[new Evaluation(hiddenWord, guess).Pack()];                
+                tree = tree.Edges[new Evaluation(hiddenWord, guess).Pack()];
                 guess = new(tree.Word, alphabet);
                 ++attemptCount;
             }
@@ -48,7 +79,7 @@ namespace FiveLetters
             Stopwatch stopwatch = Stopwatch.StartNew();
             int maxAttempts = 0;
             List<Word> fails = [];
-            Dictionary<int, int> attempts = [];            
+            Dictionary<int, int> attempts = [];
             for (int i = 0; i < words.Count; ++i)
             {
                 int attempt_count = HiddenWordGame(words[i], tree, alphabet);
@@ -131,7 +162,7 @@ namespace FiveLetters
 
         private static void PlayInteractiveGame(Tree tree)
         {
-            (_, Alphabet alphabet) = GetFiveLetterWords(tree);            
+            (_, Alphabet alphabet) = GetFiveLetterWords(tree);
             int attempt = 0;
             do
             {
@@ -156,10 +187,10 @@ namespace FiveLetters
             } while (attempt < 6);
         }
 
-        private static void MakeGraph(List<string> globalWords, string outputFilename)
+        private static void MakeGraph(string outputFilename, WordCollection words)
         {
-            (List<Word> allWords, _) = GetFiveLetterWords(globalWords);
-            TreeSerializer.Save(TreeGenerator.Get(allWords), outputFilename);
+            (List<Word> globalWords, List<Word> attackWords, _) = GetFiveLetterWords(words);
+            TreeSerializer.Save(TreeGenerator.Get(globalWords, attackWords), outputFilename);
         }
 
         private static void ShowHelpAndTerminate()
@@ -174,7 +205,7 @@ namespace FiveLetters
             Console.WriteLine("\t$ {0} interactive /path/to/nav_graph", exeName);
             Console.WriteLine("\t\tStarts interactive mode to play the game.");
             Console.WriteLine();
-            Console.WriteLine("\t$ {0} graph /path/to/dictionary /path/to/nav_graph", exeName);
+            Console.WriteLine("\t$ {0} graph /path/to/nav_graph /path/to/dictionary ...", exeName);
             Console.WriteLine("\t\tMakes the navigation graph out of the dictionary.");
             Console.WriteLine();
             Console.WriteLine("The '/path/to/dictionary' is path to a file that contains");
@@ -184,26 +215,45 @@ namespace FiveLetters
             Console.WriteLine("Duplicates are allowed but will be ignored.");
             Console.WriteLine("The dictionary must not be empty.");
             Console.WriteLine("The codepage must be UTF-8.");
-            Console.WriteLine();            
+            Console.WriteLine();
             Environment.Exit(1);
         }
 
-        private static (List<Word> allWords, Alphabet alphabet) GetFiveLetterWords(List<string> allWords) {
-            Alphabet alphabet = Alphabet.FromWords(allWords);
+        private static (List<Word> globalWords, List<Word> attackWords, Alphabet alphabet) GetFiveLetterWords(WordCollection wordCollection)
+        {
+            Alphabet alphabet = Alphabet.FromWords(wordCollection.GlobalWords);
             Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.IndexToChar.Count);
             Console.WriteLine("Alphabet: {0}.", alphabet);
-            List<Word> fiveLetterWords = allWords.Select(word => new Word(word, alphabet)).ToList();
-            Console.WriteLine(string.Format("Loaded {0} words.", fiveLetterWords.Count));
-            if (fiveLetterWords.Count <= 0)
+            List<Word> globalWords = [.. wordCollection.GlobalWords.Select(word => new Word(word, alphabet))];
+            List<Word> attackWords = [.. wordCollection.AttackWords.Select(word => new Word(word, alphabet))];
+            Console.WriteLine("Loaded {0} global words and {1} attack words.", globalWords.Count, attackWords.Count);
+            if (globalWords.Count <= 0)
+            {
+                Console.WriteLine("The global dictionary doesn't contain words.");
+                Environment.Exit(1);
+            }
+            if (attackWords.Count <= 0)
+            {
+                Console.WriteLine("The attack dictionary doesn't contain words.");
+                Environment.Exit(1);
+            }
+            return (globalWords, attackWords, alphabet);
+        }
+
+        private static (List<Word> allWords, Alphabet alphabet) GetFiveLetterWords(Tree tree)
+        {
+            List<string> words = WordCollector.GetWords(tree);
+            Alphabet alphabet = Alphabet.FromWords(words);
+            Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.IndexToChar.Count);
+            Console.WriteLine("Alphabet: {0}.", alphabet);
+            List<Word> allWords = [.. words.Select(word => new Word(word, alphabet))];
+            Console.WriteLine("Loaded {0} words.", allWords.Count);
+            if (allWords.Count <= 0)
             {
                 Console.WriteLine("The dictionary doesn't contain words.");
                 Environment.Exit(1);
             }
-            return (fiveLetterWords, alphabet);
-        }
-
-        private static (List<Word> allWords, Alphabet alphabet) GetFiveLetterWords(Tree tree) {
-            return GetFiveLetterWords(WordCollector.GetWords(tree));
+            return (allWords, alphabet);
         }
 
         public static void Run(string[] args)
@@ -223,7 +273,7 @@ namespace FiveLetters
                     PlayInteractiveGame(TreeSerializer.Load(args[1]));
                     break;
                 case "graph":
-                    MakeGraph(LoadWords(args[1]), args[2]);
+                    MakeGraph(args[1], LoadWords(args[2..]));
                     break;
                 default:
                     ShowHelpAndTerminate();
