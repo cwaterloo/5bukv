@@ -4,16 +4,17 @@ namespace FiveLetters
     {
         public static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
         {
-            long metric = current;
-            long n = 0;
+            long p = words.Count / 243;
+            long metric = current + p*p;
+            long n = -p;
             State state = new(word, guess);
             foreach (Word wordToCheck in words)
             {
                 if (state.MatchWord(wordToCheck))
                 {
-                    metric += (n << 1) + 1;
+                    metric += 2 * n + 1;
                     ++n;
-                    if (metric > observedMin)
+                    if (n > 0 && metric > observedMin)
                     {
                         return metric;
                     }
