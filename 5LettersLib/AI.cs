@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace FiveLetters
 {
     public static class AI
@@ -86,12 +88,17 @@ namespace FiveLetters
                 throw new InvalidOperationException("Expect at least 2 candidates.");
             }
 
+            Stopwatch watch = Stopwatch.StartNew();
             long minMetric = long.MaxValue;
+            long totalCount = globalWords.Count * (globalWords.Count - 1) / 2;
             (Word candidate1, Word candidate2)? candidateMin = null;
+            long count = 0;
             for (int i = 0; i < globalWords.Count; ++i)
             {
                 for (int j = i + 1; j < globalWords.Count; ++j)
                 {
+                    ++count;
+                    Console.WriteLine("ETA: {0}.", DateTime.UtcNow + watch.Elapsed * ((double)totalCount / count - 1.0));
                     long currentMetric = 0;
                     foreach (Word word in words)
                     {
