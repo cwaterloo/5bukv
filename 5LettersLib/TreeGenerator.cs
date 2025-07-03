@@ -17,7 +17,7 @@ namespace FiveLetters
             {
                 throw new ArgumentException("List of words must not be empty.");
             }
-            return new TreeGenerator(attackWords).Make(globalWords, 0);
+            return new TreeGenerator(attackWords).Make2(globalWords, 0);
         }
 
         private Tree Make(List<Word> candidates, int level)

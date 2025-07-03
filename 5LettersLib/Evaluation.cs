@@ -64,6 +64,18 @@ namespace FiveLetters
             return evaluationTypes;
         }
 
+        private static void Increment<T>(Dictionary<T, int> counters, T letter) where T : notnull
+        {
+            if (counters.TryGetValue(letter, out int count))
+            {
+                counters[letter] = count + 1;
+            }
+            else
+            {
+                counters[letter] = 1;
+            }
+        }
+
         public Evaluation(Word guess, string value)
         {
             if (value.Length != Word.WordLetterCount)
@@ -73,17 +85,33 @@ namespace FiveLetters
             }
             List<EvaluationType> evaluations = GetEvaluations(value);
 
-            HashSet<int> presentLetters = guess.Zip(evaluations)
-                .Where(pair => pair.Second != EvaluationType.Absent)
-                .Select(pair => pair.First.Value).ToHashSet();
+            Dictionary<Letter, int> presense = [];
 
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
-                if (evaluations[i] == EvaluationType.Absent && presentLetters.Contains(guess[i]))
+                if (evaluations[i] == EvaluationType.Present)
                 {
-                    evaluations[i] = EvaluationType.Present;
+                    Increment(presense, guess[i]);
                 }
             }
+
+            for (int i = 0; i < Word.WordLetterCount; ++i)
+            {
+                if (evaluations[i] == EvaluationType.Correct)
+                {
+                    continue;
+                }
+                if (presense.GetValueOrDefault(guess[i], 0) > 0)
+                {
+                    evaluations[i] = EvaluationType.Present;
+                    --presense[guess[i]];
+                }
+                else
+                {
+                    evaluations[i] = EvaluationType.Absent;
+                }
+            }
+
             this.evaluations = evaluations.ToImmutableList();
         }
 
@@ -94,7 +122,16 @@ namespace FiveLetters
                 throw new InvalidOperationException("An attempt to create a state from different alphabet length.");
             }
 
-            HashSet<int> presentLetters = hiddenWord.Select(letter => letter.Value).ToHashSet();
+            Dictionary<Letter, int> wordLetterCounter = []; 
+
+            for (int i = 0; i < Word.WordLetterCount; ++i)
+            {
+                if (hiddenWord[i] != guess[i])
+                {
+                    Increment(wordLetterCounter, hiddenWord[i]);
+                }
+            }
+
             List<EvaluationType> evaluations = [];
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
@@ -102,9 +139,14 @@ namespace FiveLetters
                 {
                     evaluations.Add(EvaluationType.Correct);
                 }
+                else if (wordLetterCounter.GetValueOrDefault(guess[i], 0) > 0)
+                {
+                    evaluations.Add(EvaluationType.Present);
+                    --wordLetterCounter[guess[i]];
+                }
                 else
                 {
-                    evaluations.Add(presentLetters.Contains(guess[i].Value) ? EvaluationType.Present : EvaluationType.Absent);
+                    evaluations.Add(EvaluationType.Absent);
                 }
             }
             this.evaluations = evaluations.ToImmutableList();
@@ -149,15 +191,30 @@ namespace FiveLetters
 
             List<EvaluationType> evaluationTypes = GetEvaluations(evaluations);
 
-            HashSet<char> presentLetters = word.Zip(evaluationTypes)
-                .Where(pair => pair.Second != EvaluationType.Absent)
-                .Select(pair => pair.First).ToHashSet();
+            Dictionary<char, int> presense = [];
 
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
-                if (evaluationTypes[i] == EvaluationType.Absent && presentLetters.Contains(word[i]))
+                if (evaluationTypes[i] == EvaluationType.Present)
+                {
+                    Increment(presense, word[i]);
+                }
+            }
+
+            for (int i = 0; i < Word.WordLetterCount; ++i)
+            {
+                if (evaluationTypes[i] == EvaluationType.Correct)
+                {
+                    continue;
+                }
+                if (presense.GetValueOrDefault(word[i], 0) > 0)
                 {
                     evaluationTypes[i] = EvaluationType.Present;
+                    --presense[word[i]];
+                }
+                else
+                {
+                    evaluationTypes[i] = EvaluationType.Absent;
                 }
             }
 
