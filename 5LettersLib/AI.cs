@@ -27,17 +27,16 @@ namespace FiveLetters
 
         public static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
         {
-            long p = words.Count / 243;
-            long metric = current + p*p;
-            long n = -p;
+            long metric = current;
+            long n = 0;
             State state = new(word, guess);
             foreach (Word wordToCheck in words)
             {
                 if (state.MatchWord(wordToCheck))
                 {
-                    metric += 2 * n + 1;
+                    metric += (n << 1) + 1;
                     ++n;
-                    if (n > 0 && metric > observedMin)
+                    if (metric > observedMin)
                     {
                         return metric;
                     }
@@ -83,22 +82,22 @@ namespace FiveLetters
 
         public static (Word guess1, Word guess2) GetCandidate2(List<Word> words, List<Word> globalWords)
         {
-            if (words.Count < 2)
+            if (words.Count == 1)
             {
-                throw new InvalidOperationException("Expect at least 2 candidates.");
+                return (words[0], words[0]);
             }
 
-            Stopwatch watch = Stopwatch.StartNew();
+            //Stopwatch watch = Stopwatch.StartNew();
             long minMetric = long.MaxValue;
-            long totalCount = globalWords.Count * (globalWords.Count - 1) / 2;
+            //long totalCount = globalWords.Count * (globalWords.Count - 1) / 2;
             (Word candidate1, Word candidate2)? candidateMin = null;
-            long count = 0;
+            //long count = 0;
             for (int i = 0; i < globalWords.Count; ++i)
             {
                 for (int j = i + 1; j < globalWords.Count; ++j)
                 {
-                    ++count;
-                    Console.WriteLine("ETA: {0}.", DateTime.UtcNow + watch.Elapsed * ((double)totalCount / count - 1.0));
+                    //++count;
+                //    Console.WriteLine("ETA: {0}.", DateTime.UtcNow + watch.Elapsed * ((double)totalCount / count - 1.0));
                     long currentMetric = 0;
                     foreach (Word word in words)
                     {

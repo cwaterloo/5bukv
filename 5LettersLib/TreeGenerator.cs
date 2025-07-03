@@ -17,7 +17,7 @@ namespace FiveLetters
             {
                 throw new ArgumentException("List of words must not be empty.");
             }
-            return new TreeGenerator(attackWords).Make2(globalWords);
+            return new TreeGenerator(attackWords).Make(globalWords, 0);
         }
 
         private Tree Make(List<Word> candidates, int level)
@@ -39,9 +39,9 @@ namespace FiveLetters
             };
         }
 
-        private Tree Make2(List<Word> candidates)
+        private Tree Make2(List<Word> candidates, int level)
         {
-            (Word guess1, Word guess2) = AI.GetCandidate2(candidates, attackWords);
+            (Word guess1, Word guess2) =  GetCandidate2(candidates, level);
             Console.WriteLine("GetCandidate completed. Words: {0}, {1}.", guess1, guess2);
             Dictionary<int, Dictionary<int, List<Word>>> stateWords = [];
             foreach (Word hiddenWord in candidates)
@@ -55,13 +55,24 @@ namespace FiveLetters
 
             string guess2Str = guess2.ToString();
             Dictionary<int, Tree> edges = stateWords.ToDictionary(keyValue1 => keyValue1.Key,
-                keyValue1 => new Tree { Word = guess2Str, Edges = { keyValue1.Value.ToDictionary(keyValue2 => keyValue2.Key, keyValue2 => Make(keyValue2.Value, 2)) } });
+                keyValue1 => new Tree { Word = guess2Str, Edges = { keyValue1.Value.ToDictionary(keyValue2 => keyValue2.Key, keyValue2 => Make(keyValue2.Value, level + 2)) } });
 
             return new()
             {
                 Word = guess1.ToString(),
                 Edges = { edges }
             };
+        }
+
+        private (Word guess1, Word guess2) GetCandidate2(List<Word> candidates, int level)
+        {
+            if (level == 0)
+            {
+                Alphabet alphabet = Alphabet.FromWords(["абвгдежзийклмнопрстуфхцчшщъыьэюя"]);
+                return (new Word("колит", alphabet), new Word("серна", alphabet));
+            }
+
+            return AI.GetCandidate2(candidates, attackWords);
         }
     }
 }
