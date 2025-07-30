@@ -1,8 +1,9 @@
 namespace FiveLetters
 {
-    internal record LetterState {
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = Word.WordLetterCount;
+    internal record LetterState
+    {
+        public int Count { get; set; } = 0;
+        public bool ExactMatch { get; set; } = false;
     }
 
     internal record PositionState
@@ -12,7 +13,7 @@ namespace FiveLetters
             internal bool MatchLetter(Letter letter) => letter == Letter == Interpretation;
         }
 
-    public class State
+    public sealed class State
     {
         private readonly LetterState[] _LetterStates;
 
@@ -69,12 +70,12 @@ namespace FiveLetters
                 int wordLetterCount = wordLetterCounter.GetValueOrDefault(guessLetterAndCount.Key, 0);
                 if (wordLetterCount < guessLetterAndCount.Value)
                 {
-                    _LetterStates[guessLetterAndCount.Key].Min = wordLetterCount;
-                    _LetterStates[guessLetterAndCount.Key].Max = wordLetterCount;
+                    _LetterStates[guessLetterAndCount.Key].Count = wordLetterCount;
+                    _LetterStates[guessLetterAndCount.Key].ExactMatch = true;
                 }
                 else
                 {
-                    _LetterStates[guessLetterAndCount.Key].Min = guessLetterAndCount.Value;
+                    _LetterStates[guessLetterAndCount.Key].Count = guessLetterAndCount.Value;
                 }
             }
 
@@ -102,7 +103,7 @@ namespace FiveLetters
 
             for (int i = 0; i < _LetterStates.Length; ++i)
             {
-                if (_LetterStates[i].Min > metChars[i] || metChars[i] > _LetterStates[i].Max)
+                if (metChars[i] < _LetterStates[i].Count || _LetterStates[i].ExactMatch && metChars[i] != _LetterStates[i].Count)
                 {
                     return false;
                 }
@@ -151,10 +152,11 @@ namespace FiveLetters
 
             foreach (KeyValuePair<Letter, int> letterCount in letterCounter)
             {
-                _LetterStates[letterCount.Key].Min = letterCount.Value;
+                LetterState letterState = _LetterStates[letterCount.Key];
+                letterState.Count = letterCount.Value;
                 if (absentLetters.Contains(letterCount.Key))
                 {
-                    _LetterStates[letterCount.Key].Max = letterCount.Value;
+                    letterState.ExactMatch = true;
                 }
             }
         }
