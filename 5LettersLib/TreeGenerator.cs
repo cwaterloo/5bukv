@@ -54,8 +54,23 @@ namespace FiveLetters
             }
 
             string guess2Str = guess2.ToString();
-            Dictionary<int, Tree> edges = stateWords.ToDictionary(keyValue1 => keyValue1.Key,
-                keyValue1 => new Tree { Word = guess2Str, Edges = { keyValue1.Value.ToDictionary(keyValue2 => keyValue2.Key, keyValue2 => Make(keyValue2.Value, level + 2)) } });
+            Dictionary<int, Tree> edges = [];
+            foreach (KeyValuePair<int, Dictionary<int, List<Word>>> keyValue1 in stateWords)
+            {
+                Dictionary<int, List<Word>> value1 = keyValue1.Value;
+                if (value1.Values.Count == 1)
+                {
+                    List<Word> words = value1.Values.Single();
+                    if (words.Count == 1)
+                    {
+                        edges.Add(keyValue1.Key, Make(words, level + 1));
+                        continue;
+                    }
+                }
+
+                edges.Add(keyValue1.Key, new Tree { Word = guess2Str, Edges = {
+                    keyValue1.Value.ToDictionary(keyValue2 => keyValue2.Key, keyValue2 => Make(keyValue2.Value, level + 2)) } });
+            }
 
             return new()
             {
