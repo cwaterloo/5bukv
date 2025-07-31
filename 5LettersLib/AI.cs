@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace FiveLetters
 {
     public static class AI
@@ -25,7 +23,7 @@ namespace FiveLetters
             return metric;
         }
 
-        public static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
+        private static long GetMatchWordCount(List<Word> words, Word word, Word guess, long current, long observedMin)
         {
             long metric = current;
             long n = 0;
@@ -45,7 +43,7 @@ namespace FiveLetters
             return metric;
         }
 
-        public static Word GetCandidate(List<Word> words, List<Word> globalWords)
+        public static Word GetCandidate(List<Word> words, List<Word> attackWords)
         {
             if (words.Count == 1)
             {
@@ -54,12 +52,12 @@ namespace FiveLetters
 
             long minMetric = long.MaxValue;
             Word? candidateMin = null;
-            for (int i = 0; i < globalWords.Count; ++i)
+            for (int i = 0; i < attackWords.Count; ++i)
             {
                 long currentMetric = 0;
                 foreach (Word word in words)
                 {
-                    currentMetric = GetMatchWordCount(words, word, globalWords[i], currentMetric, minMetric);
+                    currentMetric = GetMatchWordCount(words, word, attackWords[i], currentMetric, minMetric);
                     if (currentMetric > minMetric)
                     {
                         break;
@@ -67,7 +65,7 @@ namespace FiveLetters
                 }
                 if (currentMetric < minMetric)
                 {
-                    candidateMin = globalWords[i];
+                    candidateMin = attackWords[i];
                     minMetric = currentMetric;
                 }
             }
@@ -80,7 +78,7 @@ namespace FiveLetters
             throw new InvalidOperationException("No more words left.");
         }
 
-        public static (Word guess1, Word guess2) GetCandidate2(List<Word> words, List<Word> globalWords)
+        public static (Word guess1, Word guess2) GetCandidate2(List<Word> words, List<Word> attackWords)
         {
             if (words.Count == 1)
             {
@@ -92,16 +90,16 @@ namespace FiveLetters
             //long totalCount = globalWords.Count * (globalWords.Count - 1) / 2;
             (Word candidate1, Word candidate2)? candidateMin = null;
             //long count = 0;
-            for (int i = 0; i < globalWords.Count; ++i)
+            for (int i = 0; i < attackWords.Count; ++i)
             {
-                for (int j = i + 1; j < globalWords.Count; ++j)
+                for (int j = i + 1; j < attackWords.Count; ++j)
                 {
                     //++count;
                 //    Console.WriteLine("ETA: {0}.", DateTime.UtcNow + watch.Elapsed * ((double)totalCount / count - 1.0));
                     long currentMetric = 0;
                     foreach (Word word in words)
                     {
-                        currentMetric = GetMatchWordCount(words, word, globalWords[i], globalWords[j], currentMetric, minMetric);
+                        currentMetric = GetMatchWordCount(words, word, attackWords[i], attackWords[j], currentMetric, minMetric);
                         if (currentMetric > minMetric)
                         {
                             break;
@@ -109,7 +107,7 @@ namespace FiveLetters
                     }
                     if (currentMetric < minMetric)
                     {
-                        candidateMin = (globalWords[i], globalWords[j]);
+                        candidateMin = (attackWords[i], attackWords[j]);
                         minMetric = currentMetric;
                     }
                 }
