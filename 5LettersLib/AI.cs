@@ -85,17 +85,17 @@ namespace FiveLetters
                 return (words[0], words[0]);
             }
 
-            //Stopwatch watch = Stopwatch.StartNew();
+            ProgressBar progressBar = new("Main work ETA");
             long minMetric = long.MaxValue;
-            //long totalCount = globalWords.Count * (globalWords.Count - 1) / 2;
+            long totalCount = attackWords.Count * (attackWords.Count - 1) / 2;
             (Word candidate1, Word candidate2)? candidateMin = null;
-            //long count = 0;
+            long count = 0;
             for (int i = 0; i < attackWords.Count; ++i)
             {
                 for (int j = i + 1; j < attackWords.Count; ++j)
                 {
-                    //++count;
-                //    Console.WriteLine("ETA: {0}.", DateTime.UtcNow + watch.Elapsed * ((double)totalCount / count - 1.0));
+                    ++count;
+                    progressBar.Draw((double)count / totalCount);
                     long currentMetric = 0;
                     foreach (Word word in words)
                     {
