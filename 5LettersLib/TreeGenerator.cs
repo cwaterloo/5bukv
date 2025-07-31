@@ -41,7 +41,7 @@ namespace FiveLetters
 
         private Tree Make2(List<Word> candidates, int level)
         {
-            (Word guess1, Word guess2) =  GetCandidate2(candidates, level);
+            (Word guess1, Word guess2) = AI.GetCandidate2(candidates, attackWords);
             Console.WriteLine("GetCandidate completed. Words: {0}, {1}.", guess1, guess2);
             Dictionary<int, Dictionary<int, List<Word>>> stateWords = [];
             foreach (Word hiddenWord in candidates)
@@ -77,17 +77,6 @@ namespace FiveLetters
                 Word = guess1.ToString(),
                 Edges = { edges }
             };
-        }
-
-        private (Word guess1, Word guess2) GetCandidate2(List<Word> candidates, int level)
-        {
-            if (level == 0)
-            {
-                Alphabet alphabet = Alphabet.FromWords(["абвгдежзийклмнопрстуфхцчшщъыьэюя"]);
-                return (new Word("колит", alphabet), new Word("серна", alphabet));
-            }
-
-            return AI.GetCandidate2(candidates, attackWords);
         }
     }
 }
