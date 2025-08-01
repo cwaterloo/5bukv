@@ -187,10 +187,10 @@ namespace FiveLetters
             } while (attempt < 6);
         }
 
-        private static void MakeGraph(string outputFilename, WordCollection words)
+        private static void MakeGraph(string outputFilename, WordCollection words, bool dual)
         {
             (List<Word> globalWords, List<Word> attackWords, _) = GetFiveLetterWords(words);
-            TreeSerializer.Save(TreeGenerator.Get(globalWords, attackWords), outputFilename);
+            TreeSerializer.Save(TreeGenerator.Get(globalWords, attackWords, dual), outputFilename);
         }
 
         private static void ShowHelpAndTerminate()
@@ -205,7 +205,7 @@ namespace FiveLetters
             Console.WriteLine("\t$ {0} interactive /path/to/nav_graph", exeName);
             Console.WriteLine("\t\tStarts interactive mode to play the game.");
             Console.WriteLine();
-            Console.WriteLine("\t$ {0} graph /path/to/nav_graph /path/to/dictionary ...", exeName);
+            Console.WriteLine("\t$ {0} graph true|false /path/to/nav_graph /path/to/dictionary ...", exeName);
             Console.WriteLine("\t\tMakes the navigation graph out of the dictionary.");
             Console.WriteLine();
             Console.WriteLine("The '/path/to/dictionary' is path to a file that contains");
@@ -259,7 +259,7 @@ namespace FiveLetters
         public static void Run(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            if (args.Length < 2 || args[0] == "graph" && args.Length < 3)
+            if (args.Length < 2 || args[0] == "graph" && args.Length < 4)
             {
                 ShowHelpAndTerminate();
             }
@@ -273,7 +273,7 @@ namespace FiveLetters
                     PlayInteractiveGame(TreeSerializer.Load(args[1]));
                     break;
                 case "graph":
-                    MakeGraph(args[1], LoadWords(args[2..]));
+                    MakeGraph(args[2], LoadWords(args[3..]), bool.Parse(args[1]));
                     break;
                 default:
                     ShowHelpAndTerminate();

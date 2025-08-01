@@ -3,19 +3,13 @@ using System.Globalization;
 
 namespace FiveLetters
 {
-    public sealed class ProgressBar
+    public sealed class ProgressBar(string message)
     {
         private int state = -1;
 
-        private readonly string message;
+        private readonly string message = message;
 
-        private readonly Stopwatch stopwatch;
-
-        public ProgressBar(string message)
-        {
-            this.message = message;
-            stopwatch = Stopwatch.StartNew();
-        }
+        private readonly Stopwatch stopwatch = Stopwatch.StartNew();
 
         private char StateChar
         {
@@ -26,7 +20,7 @@ namespace FiveLetters
                     0 => '/',
                     1 => '-',
                     2 => '\\',
-                    _ => '-',
+                    _ => '|',
                 };
             }
         }

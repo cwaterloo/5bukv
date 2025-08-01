@@ -11,13 +11,14 @@ namespace FiveLetters
             this.attackWords = attackWords;
         }
 
-        public static Tree Get(List<Word> globalWords, List<Word> attackWords)
+        public static Tree Get(List<Word> globalWords, List<Word> attackWords, bool dual)
         {
             if (globalWords.Count <= 0 || attackWords.Count <= 0)
             {
                 throw new ArgumentException("List of words must not be empty.");
             }
-            return new TreeGenerator(attackWords).Make2(globalWords, 0);
+            TreeGenerator generator = new(attackWords);
+            return dual ? generator.Make2(globalWords, 0) : generator.Make(globalWords, 0);
         }
 
         private Tree Make(List<Word> candidates, int level)
@@ -42,7 +43,6 @@ namespace FiveLetters
         private Tree Make2(List<Word> candidates, int level)
         {
             (Word guess1, Word guess2) = AI.GetCandidate2(candidates, attackWords);
-            Console.WriteLine("GetCandidate completed. Words: {0}, {1}.", guess1, guess2);
             Dictionary<int, Dictionary<int, List<Word>>> stateWords = [];
             foreach (Word hiddenWord in candidates)
             {

@@ -50,10 +50,15 @@ namespace FiveLetters
                 return words[0];
             }
 
+            ProgressBar progressBar = new("Main work ETA");
             long minMetric = long.MaxValue;
+            int totalCount = attackWords.Count;
             Word? candidateMin = null;
+            int count = 0;
             for (int i = 0; i < attackWords.Count; ++i)
             {
+                ++count;
+                progressBar.Draw((double)count / totalCount);
                 long currentMetric = 0;
                 foreach (Word word in words)
                 {
