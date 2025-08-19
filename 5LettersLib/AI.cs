@@ -83,6 +83,52 @@ namespace FiveLetters
             throw new InvalidOperationException("No more words left.");
         }
 
+        private static bool AllLettersUnique(Word word, bool[] letterCounter)
+        {
+            for (int i = 0; i < letterCounter.Length; ++i)
+            {
+                letterCounter[i] = false;
+            }
+            foreach (Letter letter in word)
+            {
+                letterCounter[letter] = true;
+            }
+            int letterCount = 0;
+            for (int i = 0; i < letterCounter.Length; ++i)
+            {
+                if (letterCounter[i])
+                {
+                    ++letterCount;
+                }
+            }
+            return letterCount >= Word.WordLetterCount;
+        }
+
+        private static bool AllLettersUnique(Word first, Word second, bool[] letterCounter)
+        {
+            for (int i = 0; i < letterCounter.Length; ++i)
+            {
+                letterCounter[i] = false;
+            }
+            foreach (Letter letter in first)
+            {
+                letterCounter[letter] = true;
+            }
+            foreach (Letter letter in second)
+            {
+                letterCounter[letter] = true;
+            }
+            int letterCount = 0;
+            for (int i = 0; i < letterCounter.Length; ++i)
+            {
+                if (letterCounter[i])
+                {
+                    ++letterCount;
+                }
+            }
+            return letterCount >= 2 * Word.WordLetterCount;
+        }
+
         public static (Word guess1, Word guess2) GetCandidate2(List<Word> words, List<Word> attackWords)
         {
             if (words.Count == 1)
@@ -90,28 +136,46 @@ namespace FiveLetters
                 return (words[0], words[0]);
             }
 
+            if (words.Count == 0)
+            {
+                throw new InvalidOperationException("No more words left.");
+            }
+
             ProgressBar progressBar = new("Main work ETA");
             long minMetric = long.MaxValue;
-            long totalCount = attackWords.Count * (attackWords.Count - 1) / 2;
-            (Word candidate1, Word candidate2)? candidateMin = null;
-            long count = 0;
+            long totalCount = 0;
+            bool[] letters = new bool[words[0].AlphabetLetterCount];
             for (int i = 0; i < attackWords.Count; ++i)
             {
-                HashSet<Letter> letters = [.. attackWords[i]];
-                if (letters.Count < Word.WordLetterCount)
+                if (!AllLettersUnique(attackWords[i], letters))
                 {
-                    count += attackWords.Count - i;
                     continue;
                 }
                 for (int j = i + 1; j < attackWords.Count; ++j)
                 {
-                    ++count;
-                    HashSet<Letter> subletters = [.. attackWords[j], .. letters];
-                    progressBar.Draw((double)count / totalCount);
-                    if (subletters.Count < 2 * Word.WordLetterCount)
+                    if (AllLettersUnique(attackWords[i], attackWords[j], letters))
+                    {
+                        ++totalCount;
+                    }
+                }
+            }
+
+            (Word candidate1, Word candidate2) candidateMin = (words[0], words[0]);
+            long count = 0;
+            for (int i = 0; i < attackWords.Count; ++i)
+            {
+                if (!AllLettersUnique(attackWords[i], letters))
+                {
+                    continue;
+                }
+                for (int j = i + 1; j < attackWords.Count; ++j)
+                {
+                    if (!AllLettersUnique(attackWords[i], attackWords[j], letters))
                     {
                         continue;
                     }
+                    ++count;
+                    progressBar.Draw((double)count / totalCount);
                     long currentMetric = 0;
                     foreach (Word word in words)
                     {
@@ -129,12 +193,7 @@ namespace FiveLetters
                 }
             }
 
-            if (candidateMin.HasValue)
-            {
-                return candidateMin.Value;
-            }
-
-            throw new InvalidOperationException("No more words left.");
+            return candidateMin;
         }
     }
 }
