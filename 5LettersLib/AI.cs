@@ -97,10 +97,21 @@ namespace FiveLetters
             long count = 0;
             for (int i = 0; i < attackWords.Count; ++i)
             {
+                HashSet<Letter> letters = [.. attackWords[i]];
+                if (letters.Count < Word.WordLetterCount)
+                {
+                    count += attackWords.Count - i;
+                    continue;
+                }
                 for (int j = i + 1; j < attackWords.Count; ++j)
                 {
                     ++count;
+                    HashSet<Letter> subletters = [.. attackWords[j], .. letters];
                     progressBar.Draw((double)count / totalCount);
+                    if (subletters.Count < 2 * Word.WordLetterCount)
+                    {
+                        continue;
+                    }
                     long currentMetric = 0;
                     foreach (Word word in words)
                     {
