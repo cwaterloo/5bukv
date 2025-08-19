@@ -1,16 +1,16 @@
 namespace FiveLetters
 {
-    internal record LetterState
+    internal record struct LetterState
     {
-        public int Count { get; set; } = 0;
-        public bool ExactMatch { get; set; } = false;
+        public int Count { get; set; }
+        public bool ExactMatch { get; set; }
     }
 
-    internal record PositionState
+    internal record struct PositionState
         {
-            internal required Letter Letter { get; init; }
-            internal required bool Interpretation { get; init; }
-            internal bool MatchLetter(Letter letter) => letter == Letter == Interpretation;
+            internal int Letter { get; set; }
+            internal bool Interpretation { get; set; }
+            internal readonly bool MatchLetter(Letter letter) => letter == Letter == Interpretation;
         }
 
     public sealed class State
@@ -19,37 +19,14 @@ namespace FiveLetters
 
         private readonly PositionState[] _PositionStates;
 
-        private static void Increment(Dictionary<Letter, int> counters, Letter letter)
+        private static int[] GetLetterCount(Word word)
         {
-            if (counters.TryGetValue(letter, out int count))
-            {
-                counters[letter] = count + 1;
-            }
-            else
-            {
-                counters[letter] = 1;
-            }
-        }
-
-        private static Dictionary<Letter, int> GetLetterCount(Word word)
-        {
-            Dictionary<Letter, int> wordLetterCounter = [];
+            int[] wordLetterCounter = new int[word.AlphabetLetterCount];
             foreach (Letter letter in word)
             {
-                Increment(wordLetterCounter, letter);
+                ++wordLetterCounter[letter];
             }
             return wordLetterCounter;
-        }
-
-        private static LetterState[] CreateLetterStates(int length)
-        {
-            LetterState[] letterStates = new LetterState[length];
-            for (int i = 0; i < letterStates.Length; ++i)
-            {
-                letterStates[i] = new();
-            }
-
-            return letterStates;
         }
 
         public State(Word word, Word guess)
@@ -59,29 +36,31 @@ namespace FiveLetters
                 throw new InvalidOperationException("An attempt to create a state from different alphabet length.");
             }
 
-            _LetterStates = CreateLetterStates(word.AlphabetLetterCount);
+            _LetterStates = new LetterState[word.AlphabetLetterCount];
             _PositionStates = new PositionState[Word.WordLetterCount];
 
-            Dictionary<Letter, int> wordLetterCounter = GetLetterCount(word);
-            Dictionary<Letter, int> guessLetterCounter = GetLetterCount(guess);
+            int[] wordLetterCounter = GetLetterCount(word);
+            int[] guessLetterCounter = GetLetterCount(guess);
 
-            foreach (KeyValuePair<Letter, int> guessLetterAndCount in guessLetterCounter)
+            for (int i = 0; i < guessLetterCounter.Length; ++i)
             {
-                int wordLetterCount = wordLetterCounter.GetValueOrDefault(guessLetterAndCount.Key, 0);
-                if (wordLetterCount < guessLetterAndCount.Value)
+                int wordLetterCount = wordLetterCounter[i];
+                int guessLetterCount = guessLetterCounter[i];
+                if (wordLetterCount < guessLetterCount)
                 {
-                    _LetterStates[guessLetterAndCount.Key].Count = wordLetterCount;
-                    _LetterStates[guessLetterAndCount.Key].ExactMatch = true;
+                    _LetterStates[i].Count = wordLetterCount;
+                    _LetterStates[i].ExactMatch = true;
                 }
                 else
                 {
-                    _LetterStates[guessLetterAndCount.Key].Count = guessLetterAndCount.Value;
+                    _LetterStates[i].Count = guessLetterCount;
                 }
             }
 
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
-                _PositionStates[i] = new PositionState { Letter = guess[i], Interpretation = word[i] == guess[i] };
+                _PositionStates[i].Letter = guess[i];
+                _PositionStates[i].Interpretation = word[i] == guess[i];
             }
         }
 
@@ -119,11 +98,11 @@ namespace FiveLetters
                     "The mask must contain exactly {0} characters.", Word.WordLetterCount));
             }
 
-            _LetterStates = CreateLetterStates(guess.AlphabetLetterCount);
+            _LetterStates = new LetterState[guess.AlphabetLetterCount];
             _PositionStates = new PositionState[Word.WordLetterCount];
 
-            Dictionary<Letter, int> letterCounter = [];
-            HashSet<Letter> absentLetters = [];
+            int[] letterCounter = new int[guess.AlphabetLetterCount];
+            bool[] absentLetters = new bool[guess.AlphabetLetterCount];
 
             for (int i = 0; i < Word.WordLetterCount; ++i)
             {
@@ -131,15 +110,15 @@ namespace FiveLetters
                 switch (value[i])
                 {
                     case 'g':
-                        absentLetters.Add(letter);
+                        absentLetters[letter] = true;
                         _PositionStates[i] = new PositionState { Letter = letter, Interpretation = false };
                         break;
                     case 'w':
-                        Increment(letterCounter, letter);
+                        ++letterCounter[letter];
                         _PositionStates[i] = new PositionState { Letter = letter, Interpretation = false };
                         break;
                     case 'y':
-                        Increment(letterCounter, letter);
+                        ++letterCounter[letter];
                         _PositionStates[i] = new PositionState { Letter = letter, Interpretation = true };
                         break;
                     default:
@@ -150,14 +129,10 @@ namespace FiveLetters
                 }
             }
 
-            foreach (KeyValuePair<Letter, int> letterCount in letterCounter)
+            for (int i = 0; i < letterCounter.Length; ++i)
             {
-                LetterState letterState = _LetterStates[letterCount.Key];
-                letterState.Count = letterCount.Value;
-                if (absentLetters.Contains(letterCount.Key))
-                {
-                    letterState.ExactMatch = true;
-                }
+                _LetterStates[i].Count = letterCounter[i];
+                _LetterStates[i].ExactMatch = absentLetters[i];
             }
         }
     }
