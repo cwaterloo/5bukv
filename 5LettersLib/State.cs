@@ -2,8 +2,17 @@ namespace FiveLetters
 {
     internal record struct LetterState
     {
-        public int Count { get; set; }
-        public bool ExactMatch { get; set; }
+        internal int Count { get; set; }
+        internal bool ExactMatch { get; set; }
+
+        internal readonly bool MatchCount(int count)
+        {
+            if (ExactMatch) {
+                return count == Count;
+            }
+
+            return count >= Count;
+        }
     }
 
     internal record struct PositionState
@@ -82,7 +91,7 @@ namespace FiveLetters
 
             for (int i = 0; i < _LetterStates.Length; ++i)
             {
-                if (metChars[i] < _LetterStates[i].Count || _LetterStates[i].ExactMatch && metChars[i] != _LetterStates[i].Count)
+                if (!_LetterStates[i].MatchCount(metChars[i]))
                 {
                     return false;
                 }
