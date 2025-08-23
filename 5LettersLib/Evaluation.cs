@@ -15,20 +15,16 @@ namespace FiveLetters
 
         private static EvaluationType GetEvaluation(char value)
         {
-            switch (value)
+            return value switch
             {
-                case 'g':
-                    return EvaluationType.Absent;
-                case 'w':
-                    return EvaluationType.Present;
-                case 'y':
-                    return EvaluationType.Correct;
-                default:
-                    throw new ArgumentException(string.Format(
-                        "Value `{0}` contains at least one inacceptable " +
-                        "character. Expecting only the following characters: " +
-                        "`g`, `w`, `y`.", value));
-            }
+                'g' => EvaluationType.Absent,
+                'w' => EvaluationType.Present,
+                'y' => EvaluationType.Correct,
+                _ => throw new ArgumentException(string.Format(
+                                        "Value `{0}` contains at least one inacceptable " +
+                                        "character. Expecting only the following characters: " +
+                                        "`g`, `w`, `y`.", value)),
+            };
         }
 
         private static List<EvaluationType> GetEvaluations(string value)
@@ -43,7 +39,8 @@ namespace FiveLetters
             return evaluations;
         }
 
-        private static List<EvaluationType> GetEvaluations(IEnumerable<Data.Evaluation> evaluations) {
+        private static List<EvaluationType> GetEvaluations(IEnumerable<Data.Evaluation> evaluations)
+        {
             List<EvaluationType> evaluationTypes = [];
             foreach (Data.Evaluation evaluation in evaluations)
             {
@@ -64,38 +61,33 @@ namespace FiveLetters
             return evaluationTypes;
         }
 
-        private static void Increment<T>(Dictionary<T, int> counters, T letter) where T : notnull
+        private static ImmutableList<EvaluationType> Normalize(List<EvaluationType> evaluations, string guess)
         {
-            if (counters.TryGetValue(letter, out int count))
-            {
-                counters[letter] = count + 1;
-            }
-            else
-            {
-                counters[letter] = 1;
-            }
-        }
-
-        public Evaluation(Word guess, string value)
-        {
-            if (value.Length != Word.WordLetterCount)
+            if (guess.Length != evaluations.Count)
             {
                 throw new ArgumentException(string.Format(
-                    "The mask must contain exactly {0} characters.", Word.WordLetterCount));
+                    "Inconsistency: length of word and length of evaluations are different."));
             }
-            List<EvaluationType> evaluations = GetEvaluations(value);
 
-            Dictionary<Letter, int> presense = [];
+            Dictionary<char, int> presense = [];
 
-            for (int i = 0; i < Word.WordLetterCount; ++i)
+            for (int i = 0; i < evaluations.Count; ++i)
             {
                 if (evaluations[i] == EvaluationType.Present)
                 {
-                    Increment(presense, guess[i]);
+                    char guessChar = guess[i];
+                    if (presense.TryGetValue(guessChar, out int count))
+                    {
+                        presense[guessChar] = count + 1;
+                    }
+                    else
+                    {
+                        presense[guessChar] = 1;
+                    }
                 }
             }
 
-            for (int i = 0; i < Word.WordLetterCount; ++i)
+            for (int i = 0; i < evaluations.Count; ++i)
             {
                 if (evaluations[i] == EvaluationType.Correct)
                 {
@@ -112,28 +104,34 @@ namespace FiveLetters
                 }
             }
 
-            this.evaluations = evaluations.ToImmutableList();
+            return [.. evaluations];
         }
 
-        public Evaluation(Word hiddenWord, Word guess)
+        public Evaluation(string guess, string pattern)
         {
-            if (hiddenWord.AlphabetLetterCount != guess.AlphabetLetterCount)
+            evaluations = Normalize(GetEvaluations(pattern), guess);
+        }
+
+        public static Evaluation FromTwoWords(string guess, string hiddenWord)
+        {
+            if (hiddenWord.Length != guess.Length)
             {
-                throw new InvalidOperationException("An attempt to create a state from different alphabet length.");
+                throw new InvalidOperationException("Word lengths are different.");
             }
 
-            Dictionary<Letter, int> wordLetterCounter = []; 
+            Dictionary<char, int> wordLetterCounter = [];
 
-            for (int i = 0; i < Word.WordLetterCount; ++i)
+            for (int i = 0; i < hiddenWord.Length; ++i)
             {
                 if (hiddenWord[i] != guess[i])
                 {
-                    Increment(wordLetterCounter, hiddenWord[i]);
+                    wordLetterCounter[hiddenWord[i]] =
+                        wordLetterCounter.GetValueOrDefault(hiddenWord[i], 0) + 1;                    
                 }
             }
 
             List<EvaluationType> evaluations = [];
-            for (int i = 0; i < Word.WordLetterCount; ++i)
+            for (int i = 0; i < hiddenWord.Length; ++i)
             {
                 if (hiddenWord[i] == guess[i])
                 {
@@ -149,7 +147,7 @@ namespace FiveLetters
                     evaluations.Add(EvaluationType.Absent);
                 }
             }
-            this.evaluations = evaluations.ToImmutableList();
+            return new([.. evaluations]);
         }
 
         private Evaluation(ImmutableList<EvaluationType> evaluations)
@@ -168,76 +166,41 @@ namespace FiveLetters
             return result;
         }
 
-        public static Evaluation Unpack(int value)
+        public static Evaluation Unpack(int value, string guess)
         {
             int count = Enum.GetValues<EvaluationType>().Length;
             List<EvaluationType> evaluationTypes = [];
-            for (int i = 0; i < Word.WordLetterCount; ++i)
+            for (int i = 0; i < guess.Length; ++i)
             {
                 evaluationTypes.Add((EvaluationType)(value % count));
                 value /= count;
             }
             evaluationTypes.Reverse();
-            return new(evaluationTypes.ToImmutableList());
+            return new(Normalize(evaluationTypes, guess));
         }
 
-        public static Evaluation FromDataEvaluations(IEnumerable<Data.Evaluation> evaluations, string word)
+        public static Evaluation FromDataEvaluations(IReadOnlyList<Data.Evaluation> evaluations, string guess)
         {
-            if (word.Length != Word.WordLetterCount)
-            {
-                throw new ArgumentException(string.Format(
-                    "The word must contain exactly {0} characters.", Word.WordLetterCount));
-            }
-
-            List<EvaluationType> evaluationTypes = GetEvaluations(evaluations);
-
-            Dictionary<char, int> presense = [];
-
-            for (int i = 0; i < Word.WordLetterCount; ++i)
-            {
-                if (evaluationTypes[i] == EvaluationType.Present)
-                {
-                    Increment(presense, word[i]);
-                }
-            }
-
-            for (int i = 0; i < Word.WordLetterCount; ++i)
-            {
-                if (evaluationTypes[i] == EvaluationType.Correct)
-                {
-                    continue;
-                }
-                if (presense.GetValueOrDefault(word[i], 0) > 0)
-                {
-                    evaluationTypes[i] = EvaluationType.Present;
-                    --presense[word[i]];
-                }
-                else
-                {
-                    evaluationTypes[i] = EvaluationType.Absent;
-                }
-            }
-
-            return new Evaluation(evaluationTypes.ToImmutableList());
+            return new Evaluation(Normalize(GetEvaluations(evaluations), guess));
         }
 
         public IEnumerable<Data.Evaluation> ToDataEvaluations()
         {
             foreach (EvaluationType evaluationType in evaluations)
             {
-                switch (evaluationType)
-                {
-                    case EvaluationType.Absent:
-                        yield return Data.Evaluation.Absent;
-                        break;
-                    case EvaluationType.Correct:
-                        yield return Data.Evaluation.Correct;
-                        break;
-                    case EvaluationType.Present:
-                        yield return Data.Evaluation.Present;
-                        break;
-                }
+                yield return ToDataEvaluation(evaluationType);
             }
+        }
+
+        private static Data.Evaluation ToDataEvaluation(EvaluationType evaluationType)
+        {
+            return evaluationType switch
+            {
+                EvaluationType.Absent => Data.Evaluation.Absent,
+                EvaluationType.Correct => Data.Evaluation.Correct,
+                EvaluationType.Present => Data.Evaluation.Present,
+                _ => throw new InvalidOperationException(string.Format("Incorrect evaluation type: {0}.", evaluationType)),
+            };
         }
     }
 }

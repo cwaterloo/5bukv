@@ -22,7 +22,7 @@ namespace FiveLetters
 {
     internal record Msg(string Text, InlineKeyboardMarkup? Markup);
 
-    internal record LettersInfo(IImmutableSet<char> PresentLetters, IImmutableDictionary<int, char> CorrectLetters);
+    internal record LettersInfo(IImmutableDictionary<char, int> LetterCounts, IImmutableDictionary<int, char> CorrectLetters);
 
     internal record NextInfo(string? Word, int PackedEvaluations);
 
@@ -35,7 +35,7 @@ namespace FiveLetters
         Error
     }
 
-    public sealed class BotApp(TelegramBotClient client, Tree tree, L10n l10n, CultureInfo cultureInfo,
+    public sealed class BotApp(TelegramBotClient client, ReadOnlyTreeRoot root, L10n l10n, CultureInfo cultureInfo,
         Config config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
         ILogger<BotApp> logger) : SimpleTelegramBotBase
     {
@@ -134,43 +134,62 @@ namespace FiveLetters
             };
         }
 
-        private static IEnumerable<Data.Evaluation> GetDefaultEvaluation(string? word, LettersInfo lettersInfo)
+        private IEnumerable<Data.Evaluation> GetDefaultEvaluation(string? word, LettersInfo lettersInfo)
         {
             if (word == null)
             {
-                foreach (Data.Evaluation evaluation in GetDefaultEvaluation())
-                {
-                    yield return evaluation;
-                }
-                yield break;
+                return GetDefaultEvaluation();
             }
 
-            for (int i = 0; i < Word.WordLetterCount; ++i)
+            List<Data.Evaluation> list = [];
+            for (int i = 0; i < word.Length; ++i)
             {
+                list.Add(Data.Evaluation.Absent);
+            }
+
+            Dictionary<char, int> letterCounts = lettersInfo.LetterCounts.ToDictionary();
+            for (int i = 0; i < word.Length; ++i)
+            {
+                int count = letterCounts.GetValueOrDefault(word[i], 0);
+                if (count <= 0)
+                {
+                    continue;
+                }
+
                 if (lettersInfo.CorrectLetters.TryGetValue(i, out char value) && value == word[i])
                 {
-                    yield return Data.Evaluation.Correct;
-                }
-                else if (lettersInfo.PresentLetters.Contains(word[i]))
-                {
-                    yield return Data.Evaluation.Present;
-                }
-                else
-                {
-                    yield return Data.Evaluation.Absent;
+                    letterCounts[word[i]] = count - 1;
+                    list[i] = Data.Evaluation.Correct;
                 }
             }
+
+            for (int i = 0; i < word.Length; ++i)
+            {
+                if (list[i] != Data.Evaluation.Absent)
+                {
+                    continue;
+                }
+
+                int count = letterCounts.GetValueOrDefault(word[i], 0);
+                if (count > 0)
+                {
+                    letterCounts[word[i]] = count - 1;
+                    list[i] = Data.Evaluation.Present;
+                }
+            }
+
+            return list;
         }
 
-        private static IEnumerable<Data.Evaluation> GetDefaultEvaluation()
+        private IEnumerable<Data.Evaluation> GetDefaultEvaluation()
         {
-            for (int i = 0; i < Word.WordLetterCount; ++i)
+            for (int i = 0; i < root.WordLength; ++i)
             {
                 yield return Data.Evaluation.Absent;
             }
         }
 
-        private static GameState MakeInitialGameState()
+        private GameState MakeInitialGameState()
         {
             return new GameState
             {
@@ -207,9 +226,10 @@ namespace FiveLetters
         }
 
         private static void UpdatePresence(IReadOnlyList<Data.Evaluation> evaluations, string word,
-            HashSet<char> presentLetters, Dictionary<int, char> correctLetters)
+            Dictionary<char, int> letterCounts, Dictionary<int, char> correctLetters)
         {
-            for (int i = 0; i < Word.WordLetterCount; ++i)
+            Dictionary<char, int> newLetterCounts = [];
+            for (int i = 0; i < word.Length; ++i)
             {
                 switch (evaluations[i])
                 {
@@ -217,8 +237,20 @@ namespace FiveLetters
                         correctLetters[i] = word[i];
                         goto case Data.Evaluation.Present;
                     case Data.Evaluation.Present:
-                        presentLetters.Add(word[i]);
+                        newLetterCounts[word[i]] = newLetterCounts.GetValueOrDefault(word[i], 0) + 1;
                         break;
+                }
+            }
+
+            foreach ((char letter, int count) in newLetterCounts)
+            {
+                if (letterCounts.TryGetValue(letter, out int originalCount))
+                {
+                    letterCounts[letter] = Math.Max(count, originalCount);
+                }
+                else
+                {
+                    letterCounts[letter] = count;
                 }
             }
         }
@@ -247,16 +279,16 @@ namespace FiveLetters
         private ChainStep GetChainStep(IReadOnlyList<int> chain, IReadOnlyList<Data.Evaluation> currentWordEvaluations)
         {
             bool noWordsLeft = false;
-            Tree lastTree = tree;
+            ReadOnlyTree lastTree = root.Tree;
             List<string> wordChain = [];
             wordChain.Add(lastTree.Word);
-            HashSet<char> presentLetters = [];
+            Dictionary<char, int> letterCounts = [];
             Dictionary<int, char> correctLetters = [];
             foreach (int state in chain)
             {
-                if (lastTree.Edges.TryGetValue(state, out Tree subtree))
+                if (lastTree.Edges.TryGetValue(state, out ReadOnlyTree? subtree) && subtree != null)
                 {
-                    UpdatePresence([.. Evaluation.Unpack(state).ToDataEvaluations()], lastTree.Word, presentLetters, correctLetters);
+                    UpdatePresence([.. Evaluation.Unpack(state, lastTree.Word).ToDataEvaluations()], lastTree.Word, letterCounts, correctLetters);
                     lastTree = subtree;
                     wordChain.Add(lastTree.Word);
                 }
@@ -270,8 +302,8 @@ namespace FiveLetters
 
             int packedEvaluations = Evaluation.FromDataEvaluations(currentWordEvaluations, lastTree.Word).Pack();
             string? word = lastTree.Edges.GetValueOrDefault(packedEvaluations)?.Word;
-            UpdatePresence(currentWordEvaluations, lastTree.Word, presentLetters, correctLetters);
-            return new ChainStep(wordChain.ToImmutableList(), new LettersInfo(presentLetters.ToImmutableHashSet(),
+            UpdatePresence(currentWordEvaluations, lastTree.Word, letterCounts, correctLetters);
+            return new ChainStep(wordChain.ToImmutableList(), new LettersInfo(letterCounts.ToImmutableDictionary(),
                 correctLetters.ToImmutableDictionary()),
                 GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft), new NextInfo(word, packedEvaluations));
         }
@@ -294,7 +326,7 @@ namespace FiveLetters
 
         private Msg? MakeMsg(GameState gameState, long chatId, int? messageId = null)
         {
-            if (gameState.Evaluation.Count != Word.WordLetterCount)
+            if (gameState.Evaluation.Count != root.WordLength)
             {
                 return null;
             }
@@ -331,7 +363,7 @@ namespace FiveLetters
                 GameState prevGameState = new()
                 {
                     Chain = { gameState.Chain.SkipLast(1) },
-                    Evaluation = { Evaluation.Unpack(gameState.Chain[^1]).ToDataEvaluations() }
+                    Evaluation = { Evaluation.Unpack(gameState.Chain[^1], chainStep.WordChain[^2]).ToDataEvaluations() }
                 };
 
                 buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Back"))
@@ -356,7 +388,7 @@ namespace FiveLetters
 
                 // Letter buttons                
                 GameState letterGameState = gameState.Clone();
-                for (int i = 0; i < Word.WordLetterCount; ++i)
+                for (int i = 0; i < letterGameState.Evaluation.Count; ++i)
                 {
                     letterGameState.Evaluation[i] = Next(letterGameState.Evaluation[i]);
                     buttonRowOne.Add(new InlineKeyboardButton(ToText(lastWord[i], gameState.Evaluation[i]))

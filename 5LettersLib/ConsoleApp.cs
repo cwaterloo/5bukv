@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using FiveLetters.Data;
 
@@ -11,7 +10,7 @@ namespace FiveLetters
             public List<string> AttackWords { get; init; } = [];
             public List<string> GlobalWords { get; init; } = [];
         };
-        private readonly record struct LetterAndColors(Letter Letter, ConsoleColor ForegroundColor, ConsoleColor BackgroundColor);
+        private readonly record struct LetterAndColors(char Letter, ConsoleColor ForegroundColor, ConsoleColor BackgroundColor);
 
         private static WordCollection LoadWords(IEnumerable<string> filenames)
         {
@@ -48,41 +47,37 @@ namespace FiveLetters
                 }
             }
 
-            if (attackWords == null)
-            {
-                attackWords = [];
-            }
-
             return new WordCollection
             {
-                AttackWords = [.. attackWords.Order()],
+                AttackWords = [.. (attackWords ?? []).Order()],
                 GlobalWords = [.. globalWords.Order()]
             };
         }
 
-        private static int HiddenWordGame(Word hiddenWord, Tree tree, Alphabet alphabet)
+        private static int HiddenWordGame(string hiddenWord, ReadOnlyTree tree)
         {
-            Word guess = new(tree.Word, alphabet);
+            string guess = tree.Word;
             int attemptCount = 1;
             while (guess != hiddenWord)
             {
-                tree = tree.Edges[new Evaluation(hiddenWord, guess).Pack()];
-                guess = new(tree.Word, alphabet);
+                tree = tree.Edges[Evaluation.FromTwoWords(guess, hiddenWord).Pack()];
+                guess = tree.Word;
                 ++attemptCount;
             }
             return attemptCount;
         }
-        private static void CollectStats(Tree tree)
+
+        private static void CollectStats(ReadOnlyTreeRoot root)
         {
-            (List<Word> words, Alphabet alphabet) = GetFiveLetterWords(tree);
+            ReadOnlyTree tree = root.Tree;
+            List<string> words = GetWords(tree);
             Console.WriteLine("Collecting stats...");
-            Stopwatch stopwatch = Stopwatch.StartNew();
             int maxAttempts = 0;
-            List<Word> fails = [];
+            List<string> fails = [];
             Dictionary<int, int> attempts = [];
             for (int i = 0; i < words.Count; ++i)
             {
-                int attempt_count = HiddenWordGame(words[i], tree, alphabet);
+                int attempt_count = HiddenWordGame(words[i], tree);
                 if (!attempts.TryAdd(attempt_count, 1))
                 {
                     ++attempts[attempt_count];
@@ -96,7 +91,6 @@ namespace FiveLetters
                     maxAttempts = attempt_count;
                 }
             }
-            stopwatch.Stop();
             Console.WriteLine("Fail count: {0}, Max attempts: {1}.", fails.Count, maxAttempts);
             if (fails.Count > 0)
             {
@@ -106,10 +100,9 @@ namespace FiveLetters
             {
                 Console.WriteLine("Attempt/word count: {0}/{1}.", attempt_count, word_count);
             }
-            Console.WriteLine("Time Elapsed: {0}.", stopwatch.Elapsed);
         }
 
-        private static LetterAndColors GetCharColor(Letter letter, char mask)
+        private static LetterAndColors GetCharColor(char letter, char mask)
         {
             switch (mask)
             {
@@ -125,7 +118,7 @@ namespace FiveLetters
             }
         }
 
-        private static void PrintEnteredState(string mask, Word guess)
+        private static void PrintEnteredState(string mask, string guess)
         {
             Console.Write("Entered state: ");
             foreach (LetterAndColors letterAndColors in guess.Zip(mask)
@@ -133,22 +126,23 @@ namespace FiveLetters
             {
                 Console.ForegroundColor = letterAndColors.ForegroundColor;
                 Console.BackgroundColor = letterAndColors.BackgroundColor;
-                Console.Write(letterAndColors.Letter.ToChar());
+                Console.Write(letterAndColors.Letter);
             }
             Console.ResetColor();
             Console.WriteLine(".");
         }
 
-        private static int? GetMask(Word guess)
+        private static int? GetMask(string guess)
         {
             do
             {
+                string matchPattern = new('y', guess.Length);
                 Console.Write("Enter state (e.g gwwwh, g - not present, w - wrong place, " +
-                    "y - correct place; yyyyy - to exit): ");
+                    "y - correct place; {0} - to exit): ", matchPattern);
                 string enteredValue = Console.ReadLine() ?? "";
                 try
                 {
-                    Evaluation? state = enteredValue == "yyyyy" ? null : new Evaluation(guess, enteredValue);
+                    Evaluation? state = enteredValue == matchPattern ? null : new Evaluation(guess, enteredValue);
                     PrintEnteredState(enteredValue, guess);
                     Console.WriteLine();
                     return state?.Pack();
@@ -160,13 +154,13 @@ namespace FiveLetters
             } while (true);
         }
 
-        private static void PlayInteractiveGame(Tree tree)
+        private static void PlayInteractiveGame(ReadOnlyTreeRoot root)
         {
-            (_, Alphabet alphabet) = GetFiveLetterWords(tree);
+            ReadOnlyTree? localTree = root.Tree;
             int attempt = 0;
             do
             {
-                Word guess = new(tree.Word, alphabet);
+                string guess = localTree.Word;
                 ++attempt;
                 Console.Write("Attempt: {0}, Guess: ", attempt);
                 Console.ForegroundColor = ConsoleColor.Green;
@@ -178,7 +172,7 @@ namespace FiveLetters
                 {
                     break;
                 }
-                if (!tree.Edges.TryGetValue(state.Value, out tree))
+                if (!localTree.Edges.TryGetValue(state.Value, out localTree) || localTree == null)
                 {
                     Console.WriteLine("No words left. It means that one of the previous " +
                         "mask was entered incorrectly.");
@@ -189,8 +183,7 @@ namespace FiveLetters
 
         private static void MakeGraph(string outputFilename, WordCollection words, bool dual)
         {
-            (List<Word> globalWords, List<Word> attackWords, _) = GetFiveLetterWords(words);
-            TreeSerializer.Save(TreeGenerator.Get(globalWords, attackWords, dual), outputFilename);
+            TreeSerializer.Save(TreeGenerator.Get(words.GlobalWords, words.AttackWords, dual), outputFilename);
         }
 
         private static void ShowHelpAndTerminate()
@@ -219,41 +212,19 @@ namespace FiveLetters
             Environment.Exit(1);
         }
 
-        private static (List<Word> globalWords, List<Word> attackWords, Alphabet alphabet) GetFiveLetterWords(WordCollection wordCollection)
-        {
-            Alphabet alphabet = Alphabet.FromWords(wordCollection.GlobalWords);
-            Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.IndexToChar.Count);
-            Console.WriteLine("Alphabet: {0}.", alphabet);
-            List<Word> globalWords = [.. wordCollection.GlobalWords.Select(word => new Word(word, alphabet))];
-            List<Word> attackWords = [.. wordCollection.AttackWords.Select(word => new Word(word, alphabet))];
-            Console.WriteLine("Loaded {0} global words and {1} attack words.", globalWords.Count, attackWords.Count);
-            if (globalWords.Count <= 0)
-            {
-                Console.WriteLine("The global dictionary doesn't contain words.");
-                Environment.Exit(1);
-            }
-            if (attackWords.Count <= 0)
-            {
-                Console.WriteLine("The attack dictionary doesn't contain words.");
-                Environment.Exit(1);
-            }
-            return (globalWords, attackWords, alphabet);
-        }
-
-        private static (List<Word> allWords, Alphabet alphabet) GetFiveLetterWords(Tree tree)
+        private static List<string> GetWords(ReadOnlyTree tree)
         {
             List<string> words = WordCollector.GetWords(tree);
-            Alphabet alphabet = Alphabet.FromWords(words);
-            Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.IndexToChar.Count);
-            Console.WriteLine("Alphabet: {0}.", alphabet);
-            List<Word> allWords = [.. words.Select(word => new Word(word, alphabet))];
-            Console.WriteLine("Loaded {0} words.", allWords.Count);
-            if (allWords.Count <= 0)
+            List<char> alphabet = AlphabetUtils.GetAlphabet(words);
+            Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.Count);
+            Console.WriteLine("Alphabet: {0}.", AlphabetUtils.ToString(alphabet));
+            Console.WriteLine("Loaded {0} words.", words.Count);
+            if (words.Count <= 0)
             {
                 Console.WriteLine("The dictionary doesn't contain words.");
                 Environment.Exit(1);
             }
-            return (allWords, alphabet);
+            return words;
         }
 
         public static void Run(string[] args)
@@ -267,10 +238,10 @@ namespace FiveLetters
             switch (args[0])
             {
                 case "stats":
-                    CollectStats(TreeSerializer.Load(args[1]));
+                    CollectStats(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])));
                     break;
                 case "interactive":
-                    PlayInteractiveGame(TreeSerializer.Load(args[1]));
+                    PlayInteractiveGame(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])));
                     break;
                 case "graph":
                     MakeGraph(args[2], LoadWords(args[3..]), bool.Parse(args[1]));

@@ -13,7 +13,7 @@ namespace FiveLetters
             this.action = action;
         }
 
-        private void TraverseChains(Tree tree)
+        private void TraverseChains(ReadOnlyTree tree)
         {
             stack.Add(tree.Word);
             if (tree.Edges.Count == 0)
@@ -21,7 +21,7 @@ namespace FiveLetters
                 action(stack.ToImmutableList());
             }
 
-            foreach (Tree subtree in tree.Edges.Values)
+            foreach (ReadOnlyTree subtree in tree.Edges.Values)
             {
                 TraverseChains(subtree);
             }
@@ -52,11 +52,11 @@ namespace FiveLetters
             IncreaseOrSetDefault(result, index + 1);
         }
 
-        public static SortedDictionary<int, int> GetStat(Tree tree)
+        public static SortedDictionary<int, int> GetStat(ReadOnlyTreeRoot tree)
         {
             SortedDictionary<int, int> result = [];
             StatCollector statCollector = new StatCollector(chain => HandleChain(chain, result));
-            statCollector.TraverseChains(tree);
+            statCollector.TraverseChains(tree.Tree);
             return result;
         }
 

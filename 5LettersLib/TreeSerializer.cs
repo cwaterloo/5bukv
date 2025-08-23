@@ -14,7 +14,8 @@ namespace FiveLetters
             tree.WriteTo(codedOutputStream);
         }
 
-        public static Tree Load(string inputFileName) {
+        public static Tree Load(string inputFileName)
+        {
             using FileStream fileStream = new(inputFileName, FileMode.Open, FileAccess.Read, FileShare.Read);
             using GZipStream gZipStream = new(fileStream, CompressionMode.Decompress);
             using CodedInputStream codedInputStream = new(gZipStream);

@@ -12,9 +12,9 @@ namespace FiveLetters
 {
     public static class CommonServices
     {
-        private static Tree GetTree(IServiceProvider serviceProvider)
+        private static ReadOnlyTreeRoot GetTreeRoot(IServiceProvider serviceProvider)
         {
-            return TreeSerializer.Load(serviceProvider.GetService<Config>()!.TreeFilename!);
+            return ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(serviceProvider.GetService<Config>()!.TreeFilename!));
         }
 
         private static TelegramBotClient GetTelegramBotClient(IServiceProvider serviceProvider)
@@ -48,7 +48,7 @@ namespace FiveLetters
 
         private static ImmutableSortedDictionary<int, int> GetStat(IServiceProvider serviceProvider)
         {
-            return StatCollector.GetStat(serviceProvider.GetService<Tree>()!).ToImmutableSortedDictionary();
+            return StatCollector.GetStat(serviceProvider.GetService<ReadOnlyTreeRoot>()!).ToImmutableSortedDictionary();
         }
 
         private static IPAddress? GetIPAddress(string? value)
@@ -106,7 +106,7 @@ namespace FiveLetters
 
         public static void AddBotCommonServices(this IServiceCollection services)
         {
-            services.AddSingleton(GetTree);
+            services.AddSingleton(GetTreeRoot);
             services.AddSingleton(GetTelegramBotClient);
             services.AddSingleton(new ResourceManager("FiveLetters.Resources.Strings", typeof(BotApp).Assembly));
             services.AddSingleton(GetCultureInfo);
