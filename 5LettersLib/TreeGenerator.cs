@@ -36,7 +36,7 @@ namespace FiveLetters
             IReadOnlyList<string> globalWordStrings, IReadOnlyList<string> attackWordStrings)
         {
             List<char> alphabet = AlphabetUtils.GetAlphabet(globalWordStrings, attackWordStrings);
-            Dictionary<char, int> charToLetterMap = GetReverseAlphabet(alphabet);
+            Dictionary<char, int> charToLetterMap = AlphabetUtils.GetReverseAlphabet(alphabet);
             Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.Count);
             Console.WriteLine("Alphabet: {0}.", AlphabetUtils.ToString(alphabet));
             List<Word> globalWords = [.. globalWordStrings.Select(word => ToWord(word, charToLetterMap))];
@@ -64,18 +64,6 @@ namespace FiveLetters
             }
 
             return result.AsReadOnly();
-        }
-
-        private static Dictionary<char, int> GetReverseAlphabet(IReadOnlyList<char> alphabet)
-        {
-            Dictionary<char, int> result = [];
-
-            for (int i = 0; i < alphabet.Count; ++i)
-            {
-                result[alphabet[i]] = i;
-            }
-
-            return result;
         }
 
         private Tree Make(IReadOnlyList<Word> candidates, int level)

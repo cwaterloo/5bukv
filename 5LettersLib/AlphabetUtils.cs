@@ -2,9 +2,9 @@ using System.Text;
 
 namespace FiveLetters
 {
-    internal sealed class AlphabetUtils
+    public sealed class AlphabetUtils
     {
-        internal static List<char> GetAlphabet(params IReadOnlyList<string>[] wordLists)
+        public static List<char> GetAlphabet(params IReadOnlyList<string>[] wordLists)
         {
             HashSet<char> chars = [];
             foreach (IReadOnlyList<string> words in wordLists)
@@ -19,6 +19,18 @@ namespace FiveLetters
             }
 
             return [.. chars.Order()];
+        }
+
+        public static Dictionary<char, int> GetReverseAlphabet(IReadOnlyList<char> alphabet)
+        {
+            Dictionary<char, int> result = [];
+
+            for (int i = 0; i < alphabet.Count; ++i)
+            {
+                result[alphabet[i]] = i;
+            }
+
+            return result;
         }
 
         internal static string ToString(IReadOnlyList<char> alphabet)
