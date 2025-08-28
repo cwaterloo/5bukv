@@ -39,8 +39,6 @@ namespace FiveLetters
 
             private readonly int[] metChars = new int[alphabetPower];
 
-            private readonly bool[] absentChars = new bool[alphabetPower];
-
             private static void GetLetterCount(Word word, int[] counter)
             {
                 Array.Clear(counter);
