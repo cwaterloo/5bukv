@@ -14,7 +14,7 @@ namespace FiveLetters
             this.alphabet = alphabet;
         }
 
-        public static Tree Get(IReadOnlyList<string> globalWordStrings, IReadOnlyList<string> attackWordStrings, bool dual)
+        internal static Tree Get(IReadOnlyList<string> globalWordStrings, IReadOnlyList<string> attackWordStrings, bool dual)
         {
             (List<Word> globalWords, List<Word> attackWords, List<char> alphabet) = GetWords(globalWordStrings, attackWordStrings);
             TreeGenerator generator = new(attackWords, alphabet);
