@@ -1,9 +1,8 @@
 using System.Collections.Immutable;
-using FiveLetters.Data;
 
 namespace FiveLetters
 {
-    public sealed class StatCollector
+    internal sealed class StatCollector
     {
         private readonly List<string> stack = [];
         private readonly Action<ImmutableList<string>> action;
@@ -52,7 +51,7 @@ namespace FiveLetters
             IncreaseOrSetDefault(result, index + 1);
         }
 
-        public static SortedDictionary<int, int> GetStat(ReadOnlyTreeRoot tree)
+        internal static SortedDictionary<int, int> GetStat(ReadOnlyTreeRoot tree)
         {
             SortedDictionary<int, int> result = [];
             StatCollector statCollector = new StatCollector(chain => HandleChain(chain, result));

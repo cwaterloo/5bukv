@@ -3,14 +3,13 @@ using System.Globalization;
 using System.Net;
 using System.Resources;
 using System.Text;
-using FiveLetters.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.BotAPI;
 
 namespace FiveLetters
 {
-    public static class CommonServices
+    internal static class CommonServices
     {
         private static ReadOnlyTreeRoot GetTreeRoot(IServiceProvider serviceProvider)
         {

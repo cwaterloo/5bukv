@@ -1,6 +1,6 @@
 namespace FiveLetters
 {
-    public sealed class MemoizedValue<T>(Func<T> valueSupplier, TimeSpan expirationPeriod)
+    internal sealed class MemoizedValue<T>(Func<T> valueSupplier, TimeSpan expirationPeriod)
     {
         private readonly record struct Expirable
         {
@@ -10,7 +10,7 @@ namespace FiveLetters
 
         private Expirable? ExpirableValue = null;
 
-        public T Get()
+        internal T Get()
         {
             lock (this)
             {

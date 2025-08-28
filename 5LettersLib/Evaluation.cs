@@ -180,12 +180,12 @@ namespace FiveLetters
             return new(Normalize(evaluationTypes, guess));
         }
 
-        public static Evaluation FromDataEvaluations(IReadOnlyList<Data.Evaluation> evaluations, string guess)
+        internal static Evaluation FromDataEvaluations(IReadOnlyList<Data.Evaluation> evaluations, string guess)
         {
             return new Evaluation(Normalize(GetEvaluations(evaluations), guess));
         }
 
-        public IEnumerable<Data.Evaluation> ToDataEvaluations()
+        internal IEnumerable<Data.Evaluation> ToDataEvaluations()
         {
             foreach (EvaluationType evaluationType in evaluations)
             {

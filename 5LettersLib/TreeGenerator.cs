@@ -3,7 +3,7 @@ using FiveLetters.Data;
 
 namespace FiveLetters
 {
-    public sealed class TreeGenerator
+    internal sealed class TreeGenerator
     {
         private readonly IReadOnlyList<Word> attackWords;
         private readonly IReadOnlyList<char> alphabet;

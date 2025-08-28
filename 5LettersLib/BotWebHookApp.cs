@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Telegram.BotAPI;
 using Telegram.BotAPI.AvailableMethods;
 using Telegram.BotAPI.AvailableTypes;
@@ -10,7 +9,7 @@ namespace FiveLetters
 {
     public sealed class BotWebHookApp(TelegramBotClient client, Config config, L10n l10n, IHost host) : BackgroundService
     {
-        public static async Task Run(string[] args)
+        public static async Task RunAsync(string[] args)
         {
             await Host.CreateDefaultBuilder(args).ConfigureServices(services =>
             {

@@ -3,7 +3,7 @@ using System.Globalization;
 
 namespace FiveLetters
 {
-    public sealed class ProgressBar(string message)
+    internal sealed class ProgressBar(string message)
     {
         private int state = -1;
 
@@ -25,7 +25,7 @@ namespace FiveLetters
             }
         }
 
-        public void Draw(double done)
+        internal void Draw(double done)
         {
             if (state < 0)
             {
