@@ -60,7 +60,7 @@ namespace FiveLetters
             int attemptCount = 1;
             while (guess != hiddenWord)
             {
-                tree = tree.Edges[Evaluation.FromTwoWords(guess, hiddenWord).Pack()];
+                tree = tree.Edges[new Evaluation(guess, hiddenWord).Pack()];
                 guess = tree.Word;
                 ++attemptCount;
             }
@@ -142,7 +142,7 @@ namespace FiveLetters
                 string enteredValue = Console.ReadLine() ?? "";
                 try
                 {
-                    Evaluation? state = enteredValue == matchPattern ? null : new Evaluation(guess, enteredValue);
+                    Evaluation? state = enteredValue == matchPattern ? null : new Evaluation(guess, Evaluation.GetEvaluationTypes(enteredValue));
                     PrintEnteredState(enteredValue, guess);
                     Console.WriteLine();
                     return state?.Pack();

@@ -84,7 +84,7 @@ namespace FiveLetters
             Dictionary<int, List<Word>> stateWords = [];
             foreach (Word hiddenWord in candidates)
             {
-                int packedState = Evaluation.FromTwoWords(ToString(guess), ToString(hiddenWord)).Pack();
+                int packedState = new Evaluation(ToString(guess), ToString(hiddenWord)).Pack();
                 List<Word> words = stateWords.TryGetValue(packedState, out List<Word>? value) ?
                     value : stateWords[packedState] = [];
                 words.Add(hiddenWord);
@@ -105,10 +105,10 @@ namespace FiveLetters
             Dictionary<int, Dictionary<int, List<Word>>> stateWords = [];
             foreach (Word hiddenWord in candidates)
             {
-                int firstPackedState = Evaluation.FromTwoWords(ToString(firstGuess), ToString(hiddenWord)).Pack();
+                int firstPackedState = new Evaluation(ToString(firstGuess), ToString(hiddenWord)).Pack();
                 Dictionary<int, List<Word>> firstWords = stateWords.TryGetValue(firstPackedState,
                     out Dictionary<int, List<Word>>? value1) ? value1 : stateWords[firstPackedState] = [];
-                int secondPackedState = Evaluation.FromTwoWords(ToString(secondGuess), ToString(hiddenWord)).Pack();
+                int secondPackedState = new Evaluation(ToString(secondGuess), ToString(hiddenWord)).Pack();
                 List<Word> secondWords = firstWords.TryGetValue(secondPackedState, out List<Word>? value2) ?
                      value2 : firstWords[secondPackedState] = [];
                 secondWords.Add(hiddenWord);

@@ -27,7 +27,7 @@ namespace FiveLetters
             };
         }
 
-        private static List<EvaluationType> GetEvaluations(string value)
+        public static List<EvaluationType> GetEvaluationTypes(string value)
         {
             List<EvaluationType> evaluations = [];
 
@@ -107,12 +107,12 @@ namespace FiveLetters
             return [.. evaluations];
         }
 
-        public Evaluation(string guess, string pattern)
+        public Evaluation(string guess, List<EvaluationType> pattern)
         {
-            evaluations = Normalize(GetEvaluations(pattern), guess);
+            evaluations = Normalize(pattern, guess);
         }
 
-        public static Evaluation FromTwoWords(string guess, string hiddenWord)
+        public Evaluation(string guess, string hiddenWord)
         {
             if (hiddenWord.Length != guess.Length)
             {
@@ -147,7 +147,8 @@ namespace FiveLetters
                     evaluations.Add(EvaluationType.Absent);
                 }
             }
-            return new([.. evaluations]);
+
+            this.evaluations = [.. evaluations];
         }
 
         private Evaluation(ImmutableList<EvaluationType> evaluations)
