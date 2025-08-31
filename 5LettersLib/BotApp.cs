@@ -35,31 +35,10 @@ namespace FiveLetters
         Error
     }
 
-    public sealed class BotApp : SimpleTelegramBotBase
+    public sealed class BotApp(TelegramBotClient client, ReadOnlyTreeRoot root, L10n l10n, CultureInfo cultureInfo,
+        Config config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
+        ILogger<BotApp> logger) : SimpleTelegramBotBase
     {
-        private readonly TelegramBotClient client;
-        private readonly ReadOnlyTreeRoot root;
-        private readonly L10n l10n;
-        private readonly CultureInfo cultureInfo;
-        private readonly Config config;
-        private readonly ImmutableSortedDictionary<int, int> stat;
-        private readonly MemoizedValue<string> helpString;
-        private readonly ILogger<BotApp> logger;
-
-        internal BotApp(TelegramBotClient client, ReadOnlyTreeRoot root, L10n l10n, CultureInfo cultureInfo,
-            Config config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
-            ILogger<BotApp> logger)
-        {
-            this.client = client;
-            this.root = root;
-            this.l10n = l10n;
-            this.cultureInfo = cultureInfo;
-            this.config = config;
-            this.stat = stat;
-            this.helpString = helpString;
-            this.logger = logger;
-        }
-
         private async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
             if (secretToken != config.SecretToken)
