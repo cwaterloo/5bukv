@@ -33,12 +33,6 @@ Once it’s pressed the one of the following three conditions occurs\.
 
  *Implementation details*
 
- Sometimes the entered letter states might be changed if, for example, the user presses _Forward_ button first
- and then immediately presses _Back_ button\. It happens when at least one letter occurs multiple times in the
- guessed word\. If the repeated letter is marked with \+ or \= sign in one place and with − sign in another,
- all the occurrences marked with − sign will be marked with \+ sign instead\. This allows the bot to not rely
- so much on the words that have repeated letters\.
-
  Guessing words is based on vocabulary\. The bot *cannot successfully guess a word* if it is not a part of the
  vocabulary\. And vice versa, the bot is useless if *its guess is not acceptable*\.
 
