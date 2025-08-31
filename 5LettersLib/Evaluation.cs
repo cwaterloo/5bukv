@@ -151,11 +151,6 @@ namespace FiveLetters
             this.evaluations = [.. evaluations];
         }
 
-        private Evaluation(ImmutableList<EvaluationType> evaluations)
-        {
-            this.evaluations = evaluations;
-        }
-
         public int Pack()
         {
             int count = Enum.GetValues<EvaluationType>().Length;
@@ -177,12 +172,12 @@ namespace FiveLetters
                 value /= count;
             }
             evaluationTypes.Reverse();
-            return new(Normalize(evaluationTypes, guess));
+            return new(guess, evaluationTypes);
         }
 
         internal static Evaluation FromDataEvaluations(IReadOnlyList<Data.Evaluation> evaluations, string guess)
         {
-            return new Evaluation(Normalize(GetEvaluations(evaluations), guess));
+            return new Evaluation(guess, GetEvaluations(evaluations));
         }
 
         internal IEnumerable<Data.Evaluation> ToDataEvaluations()
