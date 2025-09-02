@@ -33,7 +33,7 @@ namespace FiveLetters
 
             int length = chain.Select(word => word.Length).Sum();
 
-            for (int i = index; i < words.Count; ++i)
+            for (int i = index; i + tupleSize - 1 < words.Count; ++i)
             {
                 if (words[i].Concat(chain.SelectMany(word => word)).Distinct().Count() < length + words[i].Length)
                 {
