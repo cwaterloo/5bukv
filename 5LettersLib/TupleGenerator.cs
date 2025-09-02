@@ -17,7 +17,7 @@ namespace FiveLetters
             return tupleGenerator.count;
         }
 
-        private void WriteChain(IReadOnlyList<string> chain)
+        private void WriteChain()
         {
             streamWriter.WriteLine(string.Join(' ', chain));
         }
