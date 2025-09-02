@@ -191,7 +191,7 @@ namespace FiveLetters
             using FileStream fileStream = new(outputFilename, FileMode.Create, FileAccess.Write, FileShare.None);
             using GZipStream gZipStream = new(fileStream, CompressionLevel.SmallestSize);
             using StreamWriter streamWriter = new(gZipStream, Encoding.UTF8);
-            long count = TupleGenerator.Generate(words.AttackWords, 5, streamWriter);
+            long count = TupleGenerator.Generate(words.AttackWords, 1, streamWriter);
             Console.WriteLine("Tuple count: {0}", count);
         }
 
