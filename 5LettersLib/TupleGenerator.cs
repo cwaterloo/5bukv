@@ -27,7 +27,7 @@ namespace FiveLetters
             if (tupleSize <= 0)
             {
                 ++count;
-                WriteChain(chain);
+                WriteChain();
                 return;
             }
 
