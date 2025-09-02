@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text;
 
 namespace FiveLetters
@@ -185,6 +186,15 @@ namespace FiveLetters
             TreeSerializer.Save(TreeGenerator.Get(words.GlobalWords, words.AttackWords, dual), outputFilename);
         }
 
+        private static void MakeTuples(string outputFilename, WordCollection words)
+        {
+            using FileStream fileStream = new(outputFilename, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            using GZipStream gZipStream = new(fileStream, CompressionLevel.SmallestSize);
+            using StreamWriter streamWriter = new(gZipStream, Encoding.UTF8);
+            long count = TupleGenerator.Generate(words.AttackWords, 5, streamWriter);
+            Console.WriteLine("Tuple count: {0}", count);
+        }
+
         private static void ShowHelpAndTerminate()
         {
             string exeName = AppDomain.CurrentDomain.FriendlyName;
@@ -229,7 +239,7 @@ namespace FiveLetters
         public static void Run(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            if (args.Length < 2 || args[0] == "graph" && args.Length < 4)
+            if (args.Length < 2 || args[0] == "graph" && args.Length < 4 || args[0] == "tuple" && args.Length < 3)
             {
                 ShowHelpAndTerminate();
             }
@@ -244,6 +254,9 @@ namespace FiveLetters
                     break;
                 case "graph":
                     MakeGraph(args[2], LoadWords(args[3..]), bool.Parse(args[1]));
+                    break;
+                case "tuples":
+                    MakeTuples(args[1], LoadWords(args[2..]));
                     break;
                 default:
                     ShowHelpAndTerminate();
