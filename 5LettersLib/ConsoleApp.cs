@@ -230,8 +230,7 @@ namespace FiveLetters
             Console.WriteLine("Loaded {0} words.", words.Count);
             if (words.Count <= 0)
             {
-                Console.WriteLine("The dictionary doesn't contain words.");
-                Environment.Exit(1);
+                throw new InvalidOperationException("The dictionary doesn't contain words.");
             }
             return words;
         }

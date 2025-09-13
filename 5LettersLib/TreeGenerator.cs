@@ -39,8 +39,7 @@ namespace FiveLetters
         {
             if (hardcodedWords.Except(attackWordStrings).Any())
             {
-                Console.WriteLine("Hardcoded word list is not a subset of attack word list.");
-                Environment.Exit(1);
+                throw new InvalidOperationException("Hardcoded word list is not a subset of attack word list.");
             }
             List<char> alphabet = AlphabetUtils.GetAlphabet(globalWordStrings, attackWordStrings);
             Dictionary<char, int> charToLetterMap = AlphabetUtils.GetReverseAlphabet(alphabet);
@@ -51,13 +50,11 @@ namespace FiveLetters
             Console.WriteLine("Loaded {0} global words and {1} attack words.", globalWords.Count, attackWords.Count);
             if (globalWords.Count <= 0)
             {
-                Console.WriteLine("The global dictionary doesn't contain words.");
-                Environment.Exit(1);
+                throw new InvalidOperationException("The global dictionary doesn't contain words.");
             }
             if (attackWords.Count <= 0)
             {
-                Console.WriteLine("The attack dictionary doesn't contain words.");
-                Environment.Exit(1);
+                throw new InvalidOperationException("The attack dictionary doesn't contain words.");
             }
             return (globalWords, attackWords, [.. hardcodedWords.Select(word => ToWord(word, charToLetterMap))], alphabet);
         }
@@ -145,6 +142,11 @@ namespace FiveLetters
             if (candidates.Count == 1)
             {
                 return candidates[0];
+            }
+
+            if (candidates.Count <= 0)
+            {
+                throw new InvalidOperationException("No hidden words left.");
             }
 
             if (level < hardcodedWords.Count)
