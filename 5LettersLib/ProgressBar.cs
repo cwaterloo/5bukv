@@ -3,11 +3,13 @@ using System.Globalization;
 
 namespace FiveLetters
 {
-    internal sealed class ProgressBar(string message)
+    internal sealed class ProgressBar(string message, bool dummy = true)
     {
         private int state = -1;
 
         private readonly string message = message;
+
+        private readonly bool dummy = dummy;
 
         private readonly Stopwatch stopwatch = Stopwatch.StartNew();
 
@@ -27,6 +29,11 @@ namespace FiveLetters
 
         internal void Draw(double done)
         {
+            if (dummy)
+            {
+                return;
+            }
+
             if (state < 0)
             {
                 state = 0;
