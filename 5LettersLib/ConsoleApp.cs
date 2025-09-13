@@ -188,10 +188,10 @@ namespace FiveLetters
 
         private static void MakeTuples(string outputFilename, WordCollection words)
         {
-            using FileStream fileStream = new(outputFilename, FileMode.Create, FileAccess.Write, FileShare.None);
+            using FileStream fileStream = new(outputFilename, FileMode.Create, FileAccess.Write, FileShare.Read);
             using GZipStream gZipStream = new(fileStream, CompressionLevel.SmallestSize);
             using StreamWriter streamWriter = new(gZipStream, Encoding.UTF8);
-            long count = TupleGenerator.Generate(words.AttackWords, 1, streamWriter);
+            long count = TupleGenerator.Generate(words.AttackWords, 4, streamWriter);
             Console.WriteLine("Tuple count: {0}", count);
         }
 

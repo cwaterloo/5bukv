@@ -39,7 +39,6 @@ namespace FiveLetters
                 {
                     continue;
                 }
-
                 chain.Add(words[i]);
                 Make(tupleSize - 1, i + 1);
                 chain.RemoveAt(chain.Count - 1);
@@ -49,7 +48,15 @@ namespace FiveLetters
         private TupleGenerator(StreamWriter streamWriter, IReadOnlyList<string> words)
         {
             this.streamWriter = streamWriter;
-            this.words = words;
+            List<string> uniqueCharWords = [];
+            foreach (string word in words)
+            {
+                if (word.Distinct().Count() >= word.Length)
+                {
+                    uniqueCharWords.Add(word);
+                }
+            }
+            this.words = uniqueCharWords;
         }
     }
 }
