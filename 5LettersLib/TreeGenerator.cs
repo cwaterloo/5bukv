@@ -82,7 +82,7 @@ namespace FiveLetters
                 words.Add(hiddenWord);
             }
 
-            Dictionary<int, Tree> edges = stateWords.Count == 1 ? [] :
+            Dictionary<int, Tree> edges = stateWords.Count == 1 && stateWords.Single().Value.Count == 1 ? [] :
                 stateWords.ToDictionary(keyValue => keyValue.Key, keyValue => Make(keyValue.Value, level + 1));
             return new()
             {
