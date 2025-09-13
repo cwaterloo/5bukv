@@ -37,7 +37,7 @@ namespace FiveLetters
         private static (List<Word> globalWords, List<Word> attackWords, List<Word> hardcodedWords, List<char> alphabet) GetWords(
             IReadOnlyList<string> globalWordStrings, IReadOnlyList<string> attackWordStrings, IReadOnlyList<string> hardcodedWords)
         {
-            if (hardcodedWords.Except(attackWordStrings).Count() > 0)
+            if (hardcodedWords.Except(attackWordStrings).Any())
             {
                 Console.WriteLine("Hardcoded word list is not a subset of attack word list.");
                 Environment.Exit(1);
