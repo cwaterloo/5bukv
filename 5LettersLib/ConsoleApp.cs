@@ -183,7 +183,7 @@ namespace FiveLetters
 
         private static void MakeGraph(string outputFilename, WordCollection words, bool dual)
         {
-            TreeSerializer.Save(TreeGenerator.Get(words.GlobalWords, words.AttackWords, dual), outputFilename);
+            TreeSerializer.Save(TreeGenerator.Get(words.GlobalWords, words.AttackWords, [], dual), outputFilename);
         }
 
         private static void MakeTuples(string outputFilename, WordCollection words)

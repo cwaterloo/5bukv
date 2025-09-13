@@ -6,18 +6,20 @@ namespace FiveLetters
     internal sealed class TreeGenerator
     {
         private readonly IReadOnlyList<Word> attackWords;
+        private readonly IReadOnlyList<Word> hardcodedWords;
         private readonly IReadOnlyList<char> alphabet;
 
-        private TreeGenerator(IReadOnlyList<Word> attackWords, IReadOnlyList<char> alphabet)
+        private TreeGenerator(IReadOnlyList<Word> attackWords, IReadOnlyList<Word> hardcodedWords, IReadOnlyList<char> alphabet)
         {
             this.attackWords = attackWords;
+            this.hardcodedWords = hardcodedWords;
             this.alphabet = alphabet;
         }
 
-        internal static Tree Get(IReadOnlyList<string> globalWordStrings, IReadOnlyList<string> attackWordStrings, bool dual)
+        internal static Tree Get(IReadOnlyList<string> globalWordStrings, IReadOnlyList<string> attackWordStrings, IReadOnlyList<string> hardcodedWords, bool dual)
         {
-            (List<Word> globalWords, List<Word> attackWords, List<char> alphabet) = GetWords(globalWordStrings, attackWordStrings);
-            TreeGenerator generator = new(attackWords, alphabet);
+            (List<Word> globalWords, List<Word> attackWords, List<Word> hardcoded, List<char> alphabet) = GetWords(globalWordStrings, attackWordStrings, hardcodedWords.Distinct().ToList());
+            TreeGenerator generator = new(attackWords, hardcoded, alphabet);
             return dual ? generator.Make2(globalWords, 0) : generator.Make(globalWords, 0);
         }
 
@@ -32,9 +34,14 @@ namespace FiveLetters
             return sb.ToString();
         }
 
-        private static (List<Word> globalWords, List<Word> attackWords, List<char> alphabet) GetWords(
-            IReadOnlyList<string> globalWordStrings, IReadOnlyList<string> attackWordStrings)
+        private static (List<Word> globalWords, List<Word> attackWords, List<Word> hardcodedWords, List<char> alphabet) GetWords(
+            IReadOnlyList<string> globalWordStrings, IReadOnlyList<string> attackWordStrings, IReadOnlyList<string> hardcodedWords)
         {
+            if (hardcodedWords.Except(attackWordStrings).Count() > 0)
+            {
+                Console.WriteLine("Hardcoded word list is not a subset of attack word list.");
+                Environment.Exit(1);
+            }
             List<char> alphabet = AlphabetUtils.GetAlphabet(globalWordStrings, attackWordStrings);
             Dictionary<char, int> charToLetterMap = AlphabetUtils.GetReverseAlphabet(alphabet);
             Console.WriteLine("Total unique characters in alphabet: {0}.", alphabet.Count);
@@ -52,7 +59,7 @@ namespace FiveLetters
                 Console.WriteLine("The attack dictionary doesn't contain words.");
                 Environment.Exit(1);
             }
-            return (globalWords, attackWords, alphabet);
+            return (globalWords, attackWords, [.. hardcodedWords.Select(word => ToWord(word, charToLetterMap))], alphabet);
         }
 
         private static Word ToWord(string word, IReadOnlyDictionary<char, int> map)
@@ -68,7 +75,7 @@ namespace FiveLetters
 
         private Tree Make(IReadOnlyList<Word> candidates, int level)
         {
-            Word guess = AI.GetCandidate(candidates, attackWords, alphabet.Count);
+            Word guess = GetCandidate(candidates, level);
             Dictionary<int, List<Word>> stateWords = [];
             foreach (Word hiddenWord in candidates)
             {
@@ -117,9 +124,13 @@ namespace FiveLetters
                     }
                 }
 
-                edges.Add(firstKeyValue.Key, new Tree { Word = secondGuessString, Edges = {
+                edges.Add(firstKeyValue.Key, new Tree
+                {
+                    Word = secondGuessString,
+                    Edges = {
                     firstKeyValue.Value.ToDictionary(secondKeyValue => secondKeyValue.Key,
-                        secondKeyValue => Make(secondKeyValue.Value, level + 2)) } });
+                        secondKeyValue => Make(secondKeyValue.Value, level + 2)) }
+                });
             }
 
             return new()
@@ -127,6 +138,21 @@ namespace FiveLetters
                 Word = ToString(firstGuess),
                 Edges = { edges }
             };
+        }
+
+        private Word GetCandidate(IReadOnlyList<Word> candidates, int level)
+        {
+            if (candidates.Count == 1)
+            {
+                return candidates[0];
+            }
+
+            if (level < hardcodedWords.Count)
+            {
+                return hardcodedWords[level];
+            }
+
+            return AI.GetCandidate(candidates, attackWords, alphabet.Count);
         }
     }
 }
