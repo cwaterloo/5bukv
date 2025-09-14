@@ -235,6 +235,22 @@ namespace FiveLetters
             return words;
         }
 
+        private static void PrintTree(ReadOnlyTree tree, int level)
+        {
+            string indent = new(' ', level * 2);
+            Console.WriteLine("{0}{1}", indent, tree.Word);
+            foreach ((int packedEvaluation, ReadOnlyTree subtree) in tree.Edges)
+            {
+                Console.WriteLine(" {0}{1}", indent, packedEvaluation);
+                PrintTree(subtree, level + 1);
+            }
+        }
+
+        private static void PrintTreeRoot(ReadOnlyTreeRoot root)
+        {
+            PrintTree(root.Tree, 0);
+        }
+
         public static void Run(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
@@ -250,6 +266,9 @@ namespace FiveLetters
                     break;
                 case "interactive":
                     PlayInteractiveGame(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])));
+                    break;
+                case "print":
+                    PrintTreeRoot(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])));
                     break;
                 case "graph":
                     MakeGraph(args[2], LoadWords(args[3..]), bool.Parse(args[1]));
