@@ -235,26 +235,28 @@ namespace FiveLetters
             return words;
         }
 
-        private static void PrintTree(ReadOnlyTree tree, int level)
+        private static void PrintTree(ReadOnlyTree tree, int level, StreamWriter streamWriter)
         {
             string indent = new(' ', level * 2);
-            Console.WriteLine("{0}{1}", indent, tree.Word);
+            streamWriter.WriteLine("{0}{1}", indent, tree.Word);
             foreach ((int packedEvaluation, ReadOnlyTree subtree) in tree.Edges)
             {
-                Console.WriteLine(" {0}{1}", indent, packedEvaluation);
-                PrintTree(subtree, level + 1);
+                streamWriter.WriteLine(" {0}{1}", indent, packedEvaluation);
+                PrintTree(subtree, level + 1, streamWriter);
             }
         }
 
-        private static void PrintTreeRoot(ReadOnlyTreeRoot root)
+        private static void PrintTreeRoot(ReadOnlyTreeRoot root, string filename)
         {
-            PrintTree(root.Tree, 0);
+            using StreamWriter streamWriter = new(filename, new UTF8Encoding(false),
+                new FileStreamOptions { Access = FileAccess.Write, Share = FileShare.None, Mode = FileMode.Create });
+            PrintTree(root.Tree, 0, streamWriter);
         }
 
         public static void Run(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            if (args.Length < 2 || args[0] == "graph" && args.Length < 4 || args[0] == "tuple" && args.Length < 3)
+            if (args.Length < 2 || args[0] == "graph" && args.Length < 4 || (args[0] == "tuple" || args[0] == "print") && args.Length < 3)
             {
                 ShowHelpAndTerminate();
             }
@@ -268,7 +270,7 @@ namespace FiveLetters
                     PlayInteractiveGame(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])));
                     break;
                 case "print":
-                    PrintTreeRoot(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])));
+                    PrintTreeRoot(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])), args[2]);
                     break;
                 case "graph":
                     MakeGraph(args[2], LoadWords(args[3..]), bool.Parse(args[1]));
