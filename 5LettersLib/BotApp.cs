@@ -37,7 +37,7 @@ namespace FiveLetters
 
     public sealed class BotApp(TelegramBotClient client, ReadOnlyTreeRoot root, L10n l10n, CultureInfo cultureInfo,
         Config config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
-        ILogger<BotApp> logger) : SimpleTelegramBotBase
+        ILogger<BotApp> logger) : SimpleUpdateHandlerBase
     {
         private async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
         {
@@ -55,8 +55,7 @@ namespace FiveLetters
             return Results.Ok();
         }
 
-
-        protected override Task OnBotExceptionAsync(BotRequestException exp, CancellationToken cancellationToken = default)
+        private static Task OnBotExceptionAsync(BotRequestException exp, CancellationToken cancellationToken = default)
         {
             if (exp.ErrorCode / 100 == 4)
             {
@@ -68,6 +67,11 @@ namespace FiveLetters
 
         protected override Task OnExceptionAsync(Exception exp, CancellationToken cancellationToken = default)
         {
+            if (exp is BotRequestException botRequestedException)
+            {
+                return OnBotExceptionAsync(botRequestedException, cancellationToken);
+            }
+
             if (exp is FormatException || exp is InvalidProtocolBufferException)
             {
                 return Task.CompletedTask;
