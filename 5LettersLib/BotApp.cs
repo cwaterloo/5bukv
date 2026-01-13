@@ -496,7 +496,7 @@ namespace FiveLetters
                     [FromHeader(Name = "X-Telegram-Bot-Api-Secret-Token")] string secretToken, BotApp botApp) =>
                    await botApp.ProcessUpdateAsync(secretToken, update, cancellationToken))
                 .WithName("Update")
-                .WithOpenApi();
+                .AddOpenApiOperationTransformer((operation, context, ct) => Task.CompletedTask);
 
             await app.RunAsync();
         }
