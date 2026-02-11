@@ -201,13 +201,13 @@ namespace FiveLetters
             };
         }
 
-        private static char GetEvaluationChar(Data.Evaluation evaluation)
+        private static string GetEvaluationStyle(Data.Evaluation evaluation)
         {
             return evaluation switch
             {
-                Data.Evaluation.Absent => '−',
-                Data.Evaluation.Present => '+',
-                Data.Evaluation.Correct => '=',
+                Data.Evaluation.Absent => "danger",
+                Data.Evaluation.Present => "primary",
+                Data.Evaluation.Correct => "success",
                 _ => throw new InvalidDataException(string.Format("Unknown enum value: {0}", evaluation)),
             };
         }
@@ -224,9 +224,13 @@ namespace FiveLetters
                 Enum.GetValues<Data.Evaluation>().Length) % Enum.GetValues<Data.Evaluation>().Length);
         }
 
-        private string ToText(char letter, Data.Evaluation evaluation)
+        private static InlineKeyboardButton MakeButton(char letter, Data.Evaluation evaluation, string serializedGameState)
         {
-            return string.Format(cultureInfo, "{0}{1}", GetEvaluationChar(evaluation), letter);
+            return new(letter.ToString())
+            {
+                Style = GetEvaluationStyle(evaluation),
+                CallbackData = serializedGameState
+            };
         }
 
         private static void UpdatePresence(IReadOnlyList<Data.Evaluation> evaluations, string word,
@@ -395,8 +399,7 @@ namespace FiveLetters
                 for (int i = 0; i < letterGameState.Evaluation.Count; ++i)
                 {
                     letterGameState.Evaluation[i] = Next(letterGameState.Evaluation[i]);
-                    buttonRowOne.Add(new InlineKeyboardButton(ToText(lastWord[i], gameState.Evaluation[i]))
-                    { CallbackData = GameStateSerializer.Save(letterGameState) });
+                    buttonRowOne.Add(MakeButton(lastWord[i], gameState.Evaluation[i], GameStateSerializer.Save(letterGameState)));
                     letterGameState.Evaluation[i] = Prev(letterGameState.Evaluation[i]);
                 }
             }
