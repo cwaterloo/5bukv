@@ -1,4 +1,4 @@
-The bot helps to guess English five\-letter words in Wordle game\.
+The bot helps to guess English five\-letter words in Wordly game\.
 
 *How to guess words*
 
@@ -7,19 +7,15 @@ Send /start to the bot in order to start a new session\.
 
 Each move begins with a bot turn\. The bot gives the user a guess and starts waiting for them to enter a response\.
 Each letter of the guessed word receives a corresponding button\. The buttons are arranged by the bot in order to
-receive user response\. The caption of each button consists of two parts\.
+receive user response\. The background color of each button corresponds the state of its letter\.
 
- \* Evaluation sign: \+, − or \= \(see below\)
+Blue color means that the letter is present in the hidden word, but is in the wrong place\.
 
- \* The corresponding letter itself
+Red color means that the hidden word has no such letter\.
 
-The \+ sign means that the letter is present in the hidden word, but is in the wrong place\.
+Green color means that the letter is present in the hidden word and is in the right place\.
 
-The − sign means that the hidden word has no such letter\.
-
-The \= sign means that the letter is present in the hidden word and is in the right place\.
-
-Pressing the buttons changes the states in loop: −, \+, \=\. Now it’s your turn to transfer
+Pressing the buttons changes the states in loop: red, blue, green\. Now it’s your turn to transfer
 the letters one by one to the desired state\. Press _Forward_ button to start the next move\.
 Once it’s pressed the one of the following three conditions occurs\.
 
