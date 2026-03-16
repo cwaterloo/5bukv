@@ -14,5 +14,6 @@ namespace FiveLetters
         public string? PathPattern { get; init; }
         public string? FeedbackEmail { get; init; }
         public string? HelpTextFilePath { get; init; }
+        public string? ProxyUrl { get; init; }
     }
 }

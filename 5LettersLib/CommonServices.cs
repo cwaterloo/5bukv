@@ -18,7 +18,18 @@ namespace FiveLetters
 
         private static TelegramBotClient GetTelegramBotClient(IServiceProvider serviceProvider)
         {
-            return new(serviceProvider.GetService<Config>()!.ApiToken!);
+            Config config = serviceProvider.GetService<Config>()!;
+            if (string.IsNullOrEmpty(config.ProxyUrl))
+            {
+                return new(config.ApiToken!);
+            }
+
+            HttpClientHandler handler = new()
+            {
+                Proxy = new WebProxy(config.ProxyUrl)
+            };
+
+            return new(new TelegramBotClientOptions(config.ApiToken!, new HttpClient(handler)));
         }
 
         private static CultureInfo GetCultureInfo(IServiceProvider serviceProvider)
@@ -41,7 +52,8 @@ namespace FiveLetters
                 TreeFilename = appSettings.GetValue<string>("TreeFilename"),
                 PathPattern = appSettings.GetValue<string>("PathPattern"),
                 FeedbackEmail = appSettings.GetValue<string>("FeedbackEmail"),
-                HelpTextFilePath = appSettings.GetValue<string>("HelpTextFilePath")
+                HelpTextFilePath = appSettings.GetValue<string>("HelpTextFilePath"),
+                ProxyUrl = appSettings.GetValue<string>("ProxyUrl")
             };
         }
 
