@@ -24,9 +24,10 @@ namespace FiveLetters
                 return new(config.ApiToken!);
             }
 
-            HttpClientHandler handler = new()
+            SocketsHttpHandler handler = new()
             {
-                Proxy = new WebProxy(config.ProxyUrl)
+                Proxy = new WebProxy(config.ProxyUrl),
+                UseProxy = true
             };
 
             return new(new TelegramBotClientOptions(config.ApiToken!, new HttpClient(handler)));
