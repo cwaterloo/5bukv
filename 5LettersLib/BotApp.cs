@@ -490,7 +490,7 @@ namespace FiveLetters
         public static Task RunAsync(string[] args)
         {
             return Host.CreateDefaultBuilder(args).ConfigureServices(services =>
-                services.AddSystemd().AddBotCommonServices().AddActivatedSingleton<BotApp>()
+                services.AddSystemd().AddBotCommonServices().AddHostedService<BotApp>()
             ).UseSystemd().Build().RunAsync();
         }
     }
