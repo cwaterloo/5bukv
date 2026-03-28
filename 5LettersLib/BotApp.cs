@@ -5,16 +5,11 @@ using Telegram.BotAPI.AvailableTypes;
 using FiveLetters.Data;
 using System.Text;
 using Telegram.BotAPI.UpdatingMessages;
-using Telegram.BotAPI.Extensions;
 using Google.Protobuf;
 using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.Builder;
 using Telegram.BotAPI.GettingUpdates;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
 using System.Globalization;
 using System.Collections.Immutable;
-using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 
@@ -36,52 +31,69 @@ namespace FiveLetters
     }
 
     public sealed class BotApp(TelegramBotClient client, ReadOnlyTreeRoot root, L10n l10n, CultureInfo cultureInfo,
-        Config config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
-        ILogger<BotApp> logger) : SimpleUpdateHandlerBase
+        BotConfig config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
+        ILogger<BotApp> logger) : BackgroundService
     {
-        private async Task<IResult> ProcessUpdateAsync(string secretToken, Update update, CancellationToken cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            if (secretToken != config.SecretToken)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                return Results.Unauthorized();
+                Task delay = Task.Delay(3000, stoppingToken);
+                int? lastUpdateId = null;
+                do
+                {
+                    IEnumerable<Update> updates = await (lastUpdateId.HasValue ?
+                        client.GetUpdatesAsync(lastUpdateId.Value + 1, cancellationToken: stoppingToken) :
+                        client.GetUpdatesAsync(cancellationToken: stoppingToken));
+                    lastUpdateId = updates.LastOrDefault()?.UpdateId;
+                    await ProcessUpdates(updates, stoppingToken);
+                } while (lastUpdateId != null);
+                await delay;
             }
-
-            if (update == default)
-            {
-                return Results.BadRequest();
-            }
-
-            await OnUpdateAsync(update, cancellationToken);
-            return Results.Ok();
         }
 
-        private static Task OnBotExceptionAsync(BotRequestException exp, CancellationToken cancellationToken = default)
+        private async Task ProcessUpdates(IEnumerable<Update> updates, CancellationToken cancellationToken)
         {
-            if (exp.ErrorCode / 100 == 4)
+            foreach (Update update in updates)
             {
-                return Task.CompletedTask;
-            }
+                try
+                {
+                    if (update.Message != null)
+                    {
+                        await OnMessageAsync(update.Message, cancellationToken);
+                    }
+                    else if (update.CallbackQuery != null)
+                    {
+                        await OnCallbackQueryAsync(update.CallbackQuery, cancellationToken);
+                    }
+                }
+                catch (Exception ex) when (!IsCritical(ex))
+                {
+                    if (ex is BotRequestException botRequestedException && botRequestedException.ErrorCode / 100 == 4)
+                    {
+                        continue;
+                    }
 
-            throw new InvalidOperationException("Unknown bot request exception.", exp);
+                    if (ex is FormatException || ex is InvalidProtocolBufferException)
+                    {
+                        continue;
+                    }
+
+                    logger.LogError(ex, "Unknown bot request exception.");
+                }
+            }
         }
 
-        protected override Task OnExceptionAsync(Exception exp, CancellationToken cancellationToken = default)
+        private static bool IsCritical(Exception ex)
         {
-            if (exp is BotRequestException botRequestedException)
-            {
-                return OnBotExceptionAsync(botRequestedException, cancellationToken);
-            }
-
-            if (exp is FormatException || exp is InvalidProtocolBufferException)
-            {
-                return Task.CompletedTask;
-            }
-
-            ExceptionDispatchInfo.Capture(exp).Throw();
-            throw exp; // Unreachable
+            return ex is OutOfMemoryException ||
+                   ex is AppDomainUnloadedException ||
+                   ex is BadImageFormatException ||
+                   ex is CannotUnloadAppDomainException ||
+                   ex is InvalidProgramException ||
+                   ex is ThreadAbortException;
         }
-
-        protected override async Task OnMessageAsync(Message message, CancellationToken cancellationToken = default)
+        private async Task OnMessageAsync(Message message, CancellationToken cancellationToken)
         {
             switch (message.Text)
             {
@@ -94,7 +106,7 @@ namespace FiveLetters
             }
         }
 
-        protected async override Task OnCallbackQueryAsync(CallbackQuery callbackQuery, CancellationToken cancellationToken = default)
+        private async Task OnCallbackQueryAsync(CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             if (callbackQuery.Data == null || callbackQuery.Message == null)
             {
@@ -475,32 +487,11 @@ namespace FiveLetters
                 cancellationToken: cancellationToken);
         }
 
-        public static async Task RunAsync(string[] args)
+        public static Task RunAsync(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
-
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-            builder.Services.AddSystemd();
-            builder.Services.AddBotCommonServices();
-            builder.Services.AddActivatedSingleton<BotApp>();
-            builder.Host.UseSystemd();
-
-            var app = builder.Build();
-
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-
-            app.MapPost(app.Services.GetService<Config>()!.PathPattern!,
-               async (CancellationToken cancellationToken, Update update,
-                    [FromHeader(Name = "X-Telegram-Bot-Api-Secret-Token")] string secretToken, BotApp botApp) =>
-                   await botApp.ProcessUpdateAsync(secretToken, update, cancellationToken))
-                .WithName("Update");
-
-            await app.RunAsync();
+            return Host.CreateDefaultBuilder(args).ConfigureServices(services =>
+                services.AddSystemd().AddBotCommonServices().AddActivatedSingleton<BotApp>()
+            ).UseSystemd().Build().RunAsync();
         }
     }
 }

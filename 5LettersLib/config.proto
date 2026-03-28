@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package five_letters.data;
+
+message BotConfig {
+    string api_token = 1;    
+    string culture_name = 2;
+    string tree_filename = 3;
+    string feedback_email = 4;
+    string help_text_file_path = 5;
+    string proxy_url = 6;
+}

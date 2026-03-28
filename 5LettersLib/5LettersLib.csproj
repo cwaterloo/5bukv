@@ -18,8 +18,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.5" />
     <PackageReference Include="Protobuf.Text" Version="0.7.2" />
     <PackageReference Include="Telegram.BotAPI" Version="9.5.0" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.5" />
     <PackageReference Include="Telegram.BotAPI.Extensions" Version="0.8.2" />
   </ItemGroup>
 
