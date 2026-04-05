@@ -34,6 +34,8 @@ namespace FiveLetters
         BotConfig config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
         ILogger<BotApp> logger) : BackgroundService
     {
+        private readonly ImmutableList<string> _AllowedUpdates = ["callback_query", "message"];
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -42,45 +44,44 @@ namespace FiveLetters
                 int? lastUpdateId = null;
                 do
                 {
-                    IEnumerable<Update> updates = await (lastUpdateId.HasValue ?
-                        client.GetUpdatesAsync(lastUpdateId.Value + 1, cancellationToken: stoppingToken) :
-                        client.GetUpdatesAsync(cancellationToken: stoppingToken));
-                    lastUpdateId = updates.LastOrDefault()?.UpdateId;
-                    await ProcessUpdates(updates, stoppingToken);
+                    try
+                    {
+                        List<Update> updates = [.. await (lastUpdateId.HasValue ?
+                            client.GetUpdatesAsync(lastUpdateId.Value + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken) :
+                            client.GetUpdatesAsync(allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken))];
+                        foreach (Update update in updates)
+                        {
+                            if (update.Message != null)
+                            {
+                                await OnMessageAsync(update.Message, stoppingToken);
+                            }
+                            else if (update.CallbackQuery != null)
+                            {
+                                await OnCallbackQueryAsync(update.CallbackQuery, stoppingToken);
+                            }
+                            lastUpdateId = update.UpdateId;
+                        }
+                        if (updates.Count == 0)
+                        {
+                            lastUpdateId = null;
+                        }
+                    }
+                    catch (Exception ex) when (!IsCritical(ex))
+                    {
+                        if (ex is BotRequestException botRequestedException && botRequestedException.ErrorCode / 100 == 4)
+                        {
+                            continue;
+                        }
+
+                        if (ex is FormatException || ex is InvalidProtocolBufferException)
+                        {
+                            continue;
+                        }
+
+                        logger.LogError(ex, "Unknown bot request exception.");
+                    }
                 } while (lastUpdateId != null);
                 await delay;
-            }
-        }
-
-        private async Task ProcessUpdates(IEnumerable<Update> updates, CancellationToken cancellationToken)
-        {
-            foreach (Update update in updates)
-            {
-                try
-                {
-                    if (update.Message != null)
-                    {
-                        await OnMessageAsync(update.Message, cancellationToken);
-                    }
-                    else if (update.CallbackQuery != null)
-                    {
-                        await OnCallbackQueryAsync(update.CallbackQuery, cancellationToken);
-                    }
-                }
-                catch (Exception ex) when (!IsCritical(ex))
-                {
-                    if (ex is BotRequestException botRequestedException && botRequestedException.ErrorCode / 100 == 4)
-                    {
-                        continue;
-                    }
-
-                    if (ex is FormatException || ex is InvalidProtocolBufferException)
-                    {
-                        continue;
-                    }
-
-                    logger.LogError(ex, "Unknown bot request exception.");
-                }
             }
         }
 
