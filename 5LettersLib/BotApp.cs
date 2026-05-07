@@ -38,15 +38,13 @@ namespace FiveLetters
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            int? lastUpdateId = null;
+            int lastUpdateId = 0;
             while (!stoppingToken.IsCancellationRequested)
             {
                 Task delay = Task.Delay(3000, stoppingToken);
                 try
                 {
-                    List<Update> updates = [.. await (lastUpdateId.HasValue ?
-                        client.GetUpdatesAsync(lastUpdateId.Value + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken) :
-                        client.GetUpdatesAsync(allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken))];
+                    var updates = await client.GetUpdatesAsync(lastUpdateId + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken);
                     lastUpdateId = await ProcessUpdates(updates, stoppingToken);
                 }
                 catch (Exception ex) when (!IsCritical(ex))
@@ -57,12 +55,9 @@ namespace FiveLetters
             }
         }
 
-        private async Task<int?> ProcessUpdates(List<Update> updates, CancellationToken stoppingToken)
+        private async Task<int> ProcessUpdates(IEnumerable<Update> updates, CancellationToken stoppingToken)
         {
-            if (updates.Count == 0)
-            {
-                return null;
-            }
+            int lastUpdateId = 0;
             foreach (Update update in updates)
             {
                 try
@@ -86,12 +81,11 @@ namespace FiveLetters
                     if (ex is FormatException || ex is InvalidProtocolBufferException)
                     {
                         continue;
-                    }
-
-                    return update.UpdateId;
+                    }                    
                 }
+                lastUpdateId = update.UpdateId;
             }
-            return updates[^1].UpdateId;
+            return lastUpdateId;
         }
 
         private static bool IsCritical(Exception ex)
