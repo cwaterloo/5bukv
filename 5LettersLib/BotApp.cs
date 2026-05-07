@@ -42,47 +42,56 @@ namespace FiveLetters
             {
                 Task delay = Task.Delay(3000, stoppingToken);
                 int? lastUpdateId = null;
-                do
+                try
                 {
-                    try
-                    {
-                        List<Update> updates = [.. await (lastUpdateId.HasValue ?
-                            client.GetUpdatesAsync(lastUpdateId.Value + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken) :
-                            client.GetUpdatesAsync(allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken))];
-                        foreach (Update update in updates)
-                        {
-                            if (update.Message != null)
-                            {
-                                await OnMessageAsync(update.Message, stoppingToken);
-                            }
-                            else if (update.CallbackQuery != null)
-                            {
-                                await OnCallbackQueryAsync(update.CallbackQuery, stoppingToken);
-                            }
-                            lastUpdateId = update.UpdateId;
-                        }
-                        if (updates.Count == 0)
-                        {
-                            lastUpdateId = null;
-                        }
-                    }
-                    catch (Exception ex) when (!IsCritical(ex))
-                    {
-                        if (ex is BotRequestException botRequestedException && botRequestedException.ErrorCode / 100 == 4)
-                        {
-                            continue;
-                        }
-
-                        if (ex is FormatException || ex is InvalidProtocolBufferException)
-                        {
-                            continue;
-                        }
-
-                        logger.LogError(ex, "Unknown bot request exception.");
-                    }
-                } while (lastUpdateId != null);
+                    List<Update> updates = [.. await (lastUpdateId.HasValue ?
+                        client.GetUpdatesAsync(lastUpdateId.Value + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken) :
+                        client.GetUpdatesAsync(allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken))];
+                    lastUpdateId = await ProcessUpdates(updates, stoppingToken);
+                }
+                catch (Exception ex) when (!IsCritical(ex))
+                {
+                    logger.LogError(ex, "Unknown bot request exception.");
+                }
                 await delay;
             }
+        }
+
+        private async Task<int?> ProcessUpdates(List<Update> updates, CancellationToken stoppingToken)
+        {
+            if (updates.Count == 0)
+            {
+                return null;
+            }
+            foreach (Update update in updates)
+            {
+                try
+                {
+                    if (update.Message != null)
+                    {
+                        await OnMessageAsync(update.Message, stoppingToken);
+                    }
+                    else if (update.CallbackQuery != null)
+                    {
+                        await OnCallbackQueryAsync(update.CallbackQuery, stoppingToken);
+                    }
+                }
+                catch (Exception ex) when (!IsCritical(ex))
+                {
+                    if (ex is BotRequestException botRequestedException && botRequestedException.ErrorCode / 100 == 4)
+                    {
+                        continue;
+                    }
+
+                    if (ex is FormatException || ex is InvalidProtocolBufferException)
+                    {
+                        continue;
+                    }
+
+                    return update.UpdateId;
+                }                
+            }
+            return updates[^1].UpdateId;
         }
 
         private static bool IsCritical(Exception ex)
