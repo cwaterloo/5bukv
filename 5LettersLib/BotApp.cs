@@ -38,10 +38,10 @@ namespace FiveLetters
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            int? lastUpdateId = null;
             while (!stoppingToken.IsCancellationRequested)
             {
                 Task delay = Task.Delay(3000, stoppingToken);
-                int? lastUpdateId = null;
                 try
                 {
                     List<Update> updates = [.. await (lastUpdateId.HasValue ?
@@ -89,7 +89,7 @@ namespace FiveLetters
                     }
 
                     return update.UpdateId;
-                }                
+                }
             }
             return updates[^1].UpdateId;
         }
