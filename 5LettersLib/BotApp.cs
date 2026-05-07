@@ -81,7 +81,7 @@ namespace FiveLetters
                     if (ex is FormatException || ex is InvalidProtocolBufferException)
                     {
                         continue;
-                    }                    
+                    }
                 }
                 lastUpdateId = update.UpdateId;
             }
