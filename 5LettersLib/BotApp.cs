@@ -44,7 +44,7 @@ namespace FiveLetters
                 Task delay = Task.Delay(3000, stoppingToken);
                 try
                 {
-                    var updates = await client.GetUpdatesAsync(lastUpdateId + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken);
+                    var updates = await client.GetUpdatesAsync(lastUpdateId + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken, timeout: 30);
                     foreach (Update update in updates)
                     {
                         await ProcessUpdate(update, stoppingToken);
