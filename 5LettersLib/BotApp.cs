@@ -45,7 +45,11 @@ namespace FiveLetters
                 try
                 {
                     var updates = await client.GetUpdatesAsync(lastUpdateId + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken);
-                    lastUpdateId = await ProcessUpdates(updates, stoppingToken);
+                    foreach (Update update in updates)
+                    {
+                        await ProcessUpdate(update, stoppingToken);
+                        lastUpdateId = update.UpdateId;
+                    }
                 }
                 catch (Exception ex) when (!IsCritical(ex))
                 {
@@ -55,37 +59,33 @@ namespace FiveLetters
             }
         }
 
-        private async Task<int> ProcessUpdates(IEnumerable<Update> updates, CancellationToken stoppingToken)
+        private async Task ProcessUpdate(Update update, CancellationToken stoppingToken)
         {
-            int lastUpdateId = 0;
-            foreach (Update update in updates)
+            try
             {
-                try
+                if (update.Message != null)
                 {
-                    if (update.Message != null)
-                    {
-                        await OnMessageAsync(update.Message, stoppingToken);
-                    }
-                    else if (update.CallbackQuery != null)
-                    {
-                        await OnCallbackQueryAsync(update.CallbackQuery, stoppingToken);
-                    }
+                    await OnMessageAsync(update.Message, stoppingToken);
                 }
-                catch (Exception ex) when (!IsCritical(ex))
+                else if (update.CallbackQuery != null)
                 {
-                    if (ex is BotRequestException botRequestedException && botRequestedException.ErrorCode / 100 == 4)
-                    {
-                        continue;
-                    }
-
-                    if (ex is FormatException || ex is InvalidProtocolBufferException)
-                    {
-                        continue;
-                    }
+                    await OnCallbackQueryAsync(update.CallbackQuery, stoppingToken);
                 }
-                lastUpdateId = update.UpdateId;
             }
-            return lastUpdateId;
+            catch (Exception ex) when (!IsCritical(ex))
+            {
+                if (ex is BotRequestException botRequestedException && botRequestedException.ErrorCode / 100 == 4)
+                {
+                    return;
+                }
+
+                if (ex is FormatException || ex is InvalidProtocolBufferException)
+                {
+                    return;
+                }
+
+                throw;
+            }
         }
 
         private static bool IsCritical(Exception ex)
