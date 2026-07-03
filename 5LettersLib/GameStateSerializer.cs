@@ -12,9 +12,11 @@ namespace FiveLetters
             return GameState.Parser.ParseFrom(codedInputStream);
         }
 
-        internal static string Save(GameState state) {
+        internal static string Save(GameState state)
+        {
             using MemoryStream memoryStream = new();
-            using (CodedOutputStream codedOutputStream = new(memoryStream)) {
+            using (CodedOutputStream codedOutputStream = new(memoryStream))
+            {
                 state.WriteTo(codedOutputStream);
             }
             memoryStream.Flush();

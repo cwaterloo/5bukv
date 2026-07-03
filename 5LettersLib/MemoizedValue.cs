@@ -20,7 +20,7 @@ namespace FiveLetters
                     ExpirableValue = new Expirable
                     {
                         Value = valueSupplier(),
-                        ExpireAt = utcNow + expirationPeriod
+                        ExpireAt = utcNow + expirationPeriod,
                     };
                 }
 

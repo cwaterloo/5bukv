@@ -15,14 +15,20 @@ namespace FiveLetters
                 throw new InvalidOperationException("Expected word length range is 1..19.");
             }
 
-            int maxStateValue = (int)(Math.Pow(Enum.GetValues<EvaluationType>().Length, length) + 0.5);
+            int maxStateValue = (int)(
+                Math.Pow(Enum.GetValues<EvaluationType>().Length, length) + 0.5
+            );
 
             (int min, int max) = GetStateMinMax(tree);
 
             if (min < 0 || max >= maxStateValue)
             {
-                throw new InvalidOperationException(string.Format(
-                    "Expected min value of state is 0 and max value of state is {0}.", maxStateValue));
+                throw new InvalidOperationException(
+                    string.Format(
+                        "Expected min value of state is 0 and max value of state is {0}.",
+                        maxStateValue
+                    )
+                );
             }
 
             ValidateStateValues(tree);

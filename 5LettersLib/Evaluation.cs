@@ -6,7 +6,7 @@ namespace FiveLetters
     {
         Absent,
         Present,
-        Correct
+        Correct,
     }
 
     public sealed class Evaluation
@@ -20,10 +20,14 @@ namespace FiveLetters
                 'g' => EvaluationType.Absent,
                 'w' => EvaluationType.Present,
                 'y' => EvaluationType.Correct,
-                _ => throw new ArgumentException(string.Format(
-                                        "Value `{0}` contains at least one inacceptable " +
-                                        "character. Expecting only the following characters: " +
-                                        "`g`, `w`, `y`.", value)),
+                _ => throw new ArgumentException(
+                    string.Format(
+                        "Value `{0}` contains at least one inacceptable "
+                            + "character. Expecting only the following characters: "
+                            + "`g`, `w`, `y`.",
+                        value
+                    )
+                ),
             };
         }
 
@@ -61,12 +65,18 @@ namespace FiveLetters
             return evaluationTypes;
         }
 
-        private static ImmutableList<EvaluationType> Normalize(List<EvaluationType> evaluations, string guess)
+        private static ImmutableList<EvaluationType> Normalize(
+            List<EvaluationType> evaluations,
+            string guess
+        )
         {
             if (guess.Length != evaluations.Count)
             {
-                throw new ArgumentException(string.Format(
-                    "Inconsistency: length of word and length of evaluations are different."));
+                throw new ArgumentException(
+                    string.Format(
+                        "Inconsistency: length of word and length of evaluations are different."
+                    )
+                );
             }
 
             Dictionary<char, int> presense = [];
@@ -126,7 +136,7 @@ namespace FiveLetters
                 if (hiddenWord[i] != guess[i])
                 {
                     wordLetterCounter[hiddenWord[i]] =
-                        wordLetterCounter.GetValueOrDefault(hiddenWord[i], 0) + 1;                    
+                        wordLetterCounter.GetValueOrDefault(hiddenWord[i], 0) + 1;
                 }
             }
 
@@ -175,7 +185,10 @@ namespace FiveLetters
             return new(guess, evaluationTypes);
         }
 
-        internal static Evaluation FromDataEvaluations(IReadOnlyList<Data.Evaluation> evaluations, string guess)
+        internal static Evaluation FromDataEvaluations(
+            IReadOnlyList<Data.Evaluation> evaluations,
+            string guess
+        )
         {
             return new Evaluation(guess, GetEvaluations(evaluations));
         }
@@ -195,7 +208,9 @@ namespace FiveLetters
                 EvaluationType.Absent => Data.Evaluation.Absent,
                 EvaluationType.Correct => Data.Evaluation.Correct,
                 EvaluationType.Present => Data.Evaluation.Present,
-                _ => throw new InvalidOperationException(string.Format("Incorrect evaluation type: {0}.", evaluationType)),
+                _ => throw new InvalidOperationException(
+                    string.Format("Incorrect evaluation type: {0}.", evaluationType)
+                ),
             };
         }
     }

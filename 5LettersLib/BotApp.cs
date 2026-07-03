@@ -1,38 +1,53 @@
+using System.Collections.Immutable;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using FiveLetters.Data;
+using Google.Protobuf;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Telegram.BotAPI;
 using Telegram.BotAPI.AvailableMethods;
 using Telegram.BotAPI.AvailableTypes;
-using FiveLetters.Data;
-using System.Text;
-using Telegram.BotAPI.UpdatingMessages;
-using Google.Protobuf;
-using Microsoft.Extensions.Hosting;
 using Telegram.BotAPI.GettingUpdates;
-using System.Globalization;
-using System.Collections.Immutable;
-using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
+using Telegram.BotAPI.UpdatingMessages;
 
 namespace FiveLetters
 {
     internal record Msg(string Text, InlineKeyboardMarkup? Markup);
 
-    internal record LettersInfo(IImmutableDictionary<char, int> LetterCounts, IImmutableDictionary<int, char> CorrectLetters);
+    internal record LettersInfo(
+        IImmutableDictionary<char, int> LetterCounts,
+        IImmutableDictionary<int, char> CorrectLetters
+    );
 
     internal record NextInfo(string? Word, int PackedEvaluations);
 
-    internal record ChainStep(IImmutableList<string> WordChain, LettersInfo LettersInfo, SessionStatus SessionStatus, NextInfo NextInfo);
+    internal record ChainStep(
+        IImmutableList<string> WordChain,
+        LettersInfo LettersInfo,
+        SessionStatus SessionStatus,
+        NextInfo NextInfo
+    );
 
     internal enum SessionStatus
     {
         InProgress,
         Completed,
-        Error
+        Error,
     }
 
-    public sealed class BotApp(TelegramBotClient client, ReadOnlyTreeRoot root, L10n l10n, CultureInfo cultureInfo,
-        BotConfig config, ImmutableSortedDictionary<int, int> stat, MemoizedValue<string> helpString,
-        ILogger<BotApp> logger) : BackgroundService
+    public sealed class BotApp(
+        TelegramBotClient client,
+        ReadOnlyTreeRoot root,
+        L10n l10n,
+        CultureInfo cultureInfo,
+        BotConfig config,
+        ImmutableSortedDictionary<int, int> stat,
+        MemoizedValue<string> helpString,
+        ILogger<BotApp> logger
+    ) : BackgroundService
     {
         private readonly ImmutableList<string> _AllowedUpdates = ["callback_query", "message"];
 
@@ -44,7 +59,12 @@ namespace FiveLetters
                 Task delay = Task.Delay(3000, stoppingToken);
                 try
                 {
-                    var updates = await client.GetUpdatesAsync(lastUpdateId + 1, allowedUpdates: _AllowedUpdates, cancellationToken: stoppingToken, timeout: 30);
+                    var updates = await client.GetUpdatesAsync(
+                        lastUpdateId + 1,
+                        allowedUpdates: _AllowedUpdates,
+                        cancellationToken: stoppingToken,
+                        timeout: 30
+                    );
                     foreach (Update update in updates)
                     {
                         await ProcessUpdate(update, stoppingToken);
@@ -74,7 +94,10 @@ namespace FiveLetters
             }
             catch (Exception ex) when (!IsCritical(ex))
             {
-                if (ex is BotRequestException botRequestedException && botRequestedException.ErrorCode / 100 == 4)
+                if (
+                    ex is BotRequestException botRequestedException
+                    && botRequestedException.ErrorCode / 100 == 4
+                )
                 {
                     return;
                 }
@@ -90,13 +113,14 @@ namespace FiveLetters
 
         private static bool IsCritical(Exception ex)
         {
-            return ex is OutOfMemoryException ||
-                   ex is AppDomainUnloadedException ||
-                   ex is BadImageFormatException ||
-                   ex is CannotUnloadAppDomainException ||
-                   ex is InvalidProgramException ||
-                   ex is ThreadAbortException;
+            return ex is OutOfMemoryException
+                || ex is AppDomainUnloadedException
+                || ex is BadImageFormatException
+                || ex is CannotUnloadAppDomainException
+                || ex is InvalidProgramException
+                || ex is ThreadAbortException;
         }
+
         private async Task OnMessageAsync(Message message, CancellationToken cancellationToken)
         {
             switch (message.Text)
@@ -110,7 +134,10 @@ namespace FiveLetters
             }
         }
 
-        private async Task OnCallbackQueryAsync(CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        private async Task OnCallbackQueryAsync(
+            CallbackQuery callbackQuery,
+            CancellationToken cancellationToken
+        )
         {
             if (callbackQuery.Data == null || callbackQuery.Message == null)
             {
@@ -121,15 +148,29 @@ namespace FiveLetters
             if (gameState.Status == Status.ToBeDeleted)
             {
                 Log("Delete.", callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId);
-                await client.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
+                await client.DeleteMessageAsync(
+                    callbackQuery.Message.Chat.Id,
+                    callbackQuery.Message.MessageId,
+                    cancellationToken
+                );
                 return;
             }
 
-            Msg? msg = MakeMsg(gameState, callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId);
+            Msg? msg = MakeMsg(
+                gameState,
+                callbackQuery.Message.Chat.Id,
+                callbackQuery.Message.MessageId
+            );
             if (msg != null)
             {
-                await client.EditMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId,
-                    text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2", cancellationToken: cancellationToken);
+                await client.EditMessageTextAsync(
+                    callbackQuery.Message.Chat.Id,
+                    callbackQuery.Message.MessageId,
+                    text: msg.Text,
+                    replyMarkup: msg.Markup,
+                    parseMode: "MarkdownV2",
+                    cancellationToken: cancellationToken
+                );
             }
         }
 
@@ -150,11 +191,16 @@ namespace FiveLetters
                 SessionStatus.InProgress => l10n.GetResourceString("InProgress"),
                 SessionStatus.Completed => l10n.GetResourceString("Completed"),
                 SessionStatus.Error => l10n.GetResourceString("Error"),
-                _ => throw new InvalidDataException(string.Format("Unknown enum value: {0}", sessionStatus)),
+                _ => throw new InvalidDataException(
+                    string.Format("Unknown enum value: {0}", sessionStatus)
+                ),
             };
         }
 
-        private IEnumerable<Data.Evaluation> GetDefaultEvaluation(string? word, LettersInfo lettersInfo)
+        private IEnumerable<Data.Evaluation> GetDefaultEvaluation(
+            string? word,
+            LettersInfo lettersInfo
+        )
         {
             if (word == null)
             {
@@ -211,10 +257,7 @@ namespace FiveLetters
 
         private GameState MakeInitialGameState()
         {
-            return new GameState
-            {
-                Evaluation = { GetDefaultEvaluation() }
-            };
+            return new GameState { Evaluation = { GetDefaultEvaluation() } };
         }
 
         private static string GetEvaluationStyle(Data.Evaluation evaluation)
@@ -224,33 +267,46 @@ namespace FiveLetters
                 Data.Evaluation.Absent => "danger",
                 Data.Evaluation.Present => "primary",
                 Data.Evaluation.Correct => "success",
-                _ => throw new InvalidDataException(string.Format("Unknown enum value: {0}", evaluation)),
+                _ => throw new InvalidDataException(
+                    string.Format("Unknown enum value: {0}", evaluation)
+                ),
             };
         }
 
         private static Data.Evaluation Next(Data.Evaluation evaluation)
         {
-            return (Data.Evaluation)(((int)evaluation + 1) %
-                Enum.GetValues<Data.Evaluation>().Length);
+            return (Data.Evaluation)(
+                ((int)evaluation + 1) % Enum.GetValues<Data.Evaluation>().Length
+            );
         }
 
         private static Data.Evaluation Prev(Data.Evaluation evaluation)
         {
-            return (Data.Evaluation)(((int)evaluation - 1 +
-                Enum.GetValues<Data.Evaluation>().Length) % Enum.GetValues<Data.Evaluation>().Length);
+            return (Data.Evaluation)(
+                ((int)evaluation - 1 + Enum.GetValues<Data.Evaluation>().Length)
+                % Enum.GetValues<Data.Evaluation>().Length
+            );
         }
 
-        private static InlineKeyboardButton MakeButton(char letter, Data.Evaluation evaluation, string serializedGameState)
+        private static InlineKeyboardButton MakeButton(
+            char letter,
+            Data.Evaluation evaluation,
+            string serializedGameState
+        )
         {
             return new(letter.ToString())
             {
                 Style = GetEvaluationStyle(evaluation),
-                CallbackData = serializedGameState
+                CallbackData = serializedGameState,
             };
         }
 
-        private static void UpdatePresence(IReadOnlyList<Data.Evaluation> evaluations, string word,
-            Dictionary<char, int> letterCounts, Dictionary<int, char> correctLetters)
+        private static void UpdatePresence(
+            IReadOnlyList<Data.Evaluation> evaluations,
+            string word,
+            Dictionary<char, int> letterCounts,
+            Dictionary<int, char> correctLetters
+        )
         {
             Dictionary<char, int> newLetterCounts = [];
             for (int i = 0; i < word.Length; ++i)
@@ -261,7 +317,8 @@ namespace FiveLetters
                         correctLetters[i] = word[i];
                         goto case Data.Evaluation.Present;
                     case Data.Evaluation.Present:
-                        newLetterCounts[word[i]] = newLetterCounts.GetValueOrDefault(word[i], 0) + 1;
+                        newLetterCounts[word[i]] =
+                            newLetterCounts.GetValueOrDefault(word[i], 0) + 1;
                         break;
                 }
             }
@@ -286,7 +343,9 @@ namespace FiveLetters
                 Data.Evaluation.Absent => 'g',
                 Data.Evaluation.Correct => 'y',
                 Data.Evaluation.Present => 'w',
-                _ => throw new InvalidDataException(string.Format("Unknown enum value: {0}", evaluation)),
+                _ => throw new InvalidDataException(
+                    string.Format("Unknown enum value: {0}", evaluation)
+                ),
             };
         }
 
@@ -300,7 +359,10 @@ namespace FiveLetters
             return builder.ToString();
         }
 
-        private ChainStep GetChainStep(IReadOnlyList<int> chain, IReadOnlyList<Data.Evaluation> currentWordEvaluations)
+        private ChainStep GetChainStep(
+            IReadOnlyList<int> chain,
+            IReadOnlyList<Data.Evaluation> currentWordEvaluations
+        )
         {
             bool noWordsLeft = false;
             ReadOnlyTree lastTree = root.Tree;
@@ -312,39 +374,81 @@ namespace FiveLetters
             {
                 if (lastTree.Edges.TryGetValue(state, out ReadOnlyTree? subtree) && subtree != null)
                 {
-                    UpdatePresence([.. Evaluation.Unpack(state, lastTree.Word).ToDataEvaluations()], lastTree.Word, letterCounts, correctLetters);
+                    UpdatePresence(
+                        [.. Evaluation.Unpack(state, lastTree.Word).ToDataEvaluations()],
+                        lastTree.Word,
+                        letterCounts,
+                        correctLetters
+                    );
                     lastTree = subtree;
                     wordChain.Add(lastTree.Word);
                 }
                 else
                 {
                     noWordsLeft = true;
-                    wordChain.Add(string.Format(cultureInfo, "\\[{0}\\]", l10n.GetResourceString("NoSuitableWords")));
+                    wordChain.Add(
+                        string.Format(
+                            cultureInfo,
+                            "\\[{0}\\]",
+                            l10n.GetResourceString("NoSuitableWords")
+                        )
+                    );
                     break;
                 }
             }
 
-            int packedEvaluations = Evaluation.FromDataEvaluations(currentWordEvaluations, lastTree.Word).Pack();
+            int packedEvaluations = Evaluation
+                .FromDataEvaluations(currentWordEvaluations, lastTree.Word)
+                .Pack();
             string? word = lastTree.Edges.GetValueOrDefault(packedEvaluations)?.Word;
             UpdatePresence(currentWordEvaluations, lastTree.Word, letterCounts, correctLetters);
-            return new ChainStep(wordChain.ToImmutableList(), new LettersInfo(letterCounts.ToImmutableDictionary(),
-                correctLetters.ToImmutableDictionary()),
-                GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft), new NextInfo(word, packedEvaluations));
+            return new ChainStep(
+                wordChain.ToImmutableList(),
+                new LettersInfo(
+                    letterCounts.ToImmutableDictionary(),
+                    correctLetters.ToImmutableDictionary()
+                ),
+                GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft),
+                new NextInfo(word, packedEvaluations)
+            );
         }
 
-        private void LogState(IImmutableList<string> wordChain, IReadOnlyList<Data.Evaluation> evaluations, SessionStatus sessionStatus,
-            bool isSealed, long chatId, int? messageId)
+        private void LogState(
+            IImmutableList<string> wordChain,
+            IReadOnlyList<Data.Evaluation> evaluations,
+            SessionStatus sessionStatus,
+            bool isSealed,
+            long chatId,
+            int? messageId
+        )
         {
             string chain = string.Join(" -> ", wordChain);
             if (sessionStatus == SessionStatus.InProgress)
             {
-                Log(string.Format(CultureInfo.InvariantCulture,
-                    "Move: {0}, Evaluations: {1}.", chain, ToString(evaluations)), chatId, messageId);
+                Log(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Move: {0}, Evaluations: {1}.",
+                        chain,
+                        ToString(evaluations)
+                    ),
+                    chatId,
+                    messageId
+                );
             }
             else
             {
-                Log(string.Format(CultureInfo.InvariantCulture,
-                    "Move: {0}, Status: {1}, Sealed: {2}.", chain, sessionStatus, isSealed), chatId, messageId);
+                Log(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Move: {0}, Status: {1}, Sealed: {2}.",
+                        chain,
+                        sessionStatus,
+                        isSealed
+                    ),
+                    chatId,
+                    messageId
+                );
             }
         }
 
@@ -366,20 +470,45 @@ namespace FiveLetters
             switch (chainStep.SessionStatus)
             {
                 case SessionStatus.Completed:
-                    textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordTemplate"), lastWord));
+                    textBuilder.Append(
+                        string.Format(cultureInfo, l10n.GetResourceString("WordTemplate"), lastWord)
+                    );
                     break;
                 case SessionStatus.InProgress:
-                    textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("SuggestionTemplate"), lastWord));
+                    textBuilder.Append(
+                        string.Format(
+                            cultureInfo,
+                            l10n.GetResourceString("SuggestionTemplate"),
+                            lastWord
+                        )
+                    );
                     break;
             }
-            LogState(chainStep.WordChain, gameState.Evaluation, chainStep.SessionStatus,
-                gameState.Status == Status.ToBeSealed, chatId, messageId);
-            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("WordChainTemplate"),
-                string.Join(" \\-\\> ", chainStep.WordChain)));
-            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("StateTemplate"),
-                GetSessionStatusText(chainStep.SessionStatus)));
-            textBuilder.Append(string.Format(cultureInfo, l10n.GetResourceString("HelpTemplate"),
-                "/help"));
+            LogState(
+                chainStep.WordChain,
+                gameState.Evaluation,
+                chainStep.SessionStatus,
+                gameState.Status == Status.ToBeSealed,
+                chatId,
+                messageId
+            );
+            textBuilder.Append(
+                string.Format(
+                    cultureInfo,
+                    l10n.GetResourceString("WordChainTemplate"),
+                    string.Join(" \\-\\> ", chainStep.WordChain)
+                )
+            );
+            textBuilder.Append(
+                string.Format(
+                    cultureInfo,
+                    l10n.GetResourceString("StateTemplate"),
+                    GetSessionStatusText(chainStep.SessionStatus)
+                )
+            );
+            textBuilder.Append(
+                string.Format(cultureInfo, l10n.GetResourceString("HelpTemplate"), "/help")
+            );
 
             if (gameState.Chain.Count > 0 && gameState.Status == Status.Undefined)
             {
@@ -387,13 +516,20 @@ namespace FiveLetters
                 GameState prevGameState = new()
                 {
                     Chain = { gameState.Chain.SkipLast(1) },
-                    Evaluation = { Evaluation.Unpack(gameState.Chain[^1], chainStep.WordChain[^2]).ToDataEvaluations() }
+                    Evaluation =
+                    {
+                        Evaluation
+                            .Unpack(gameState.Chain[^1], chainStep.WordChain[^2])
+                            .ToDataEvaluations(),
+                    },
                 };
 
-                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Back"))
-                {
-                    CallbackData = GameStateSerializer.Save(prevGameState)
-                });
+                buttonRowTwo.Add(
+                    new InlineKeyboardButton(l10n.GetResourceString("Back"))
+                    {
+                        CallbackData = GameStateSerializer.Save(prevGameState),
+                    }
+                );
             }
 
             if (chainStep.SessionStatus == SessionStatus.InProgress)
@@ -402,20 +538,31 @@ namespace FiveLetters
                 GameState nextGameState = new()
                 {
                     Chain = { gameState.Chain.Append(chainStep.NextInfo.PackedEvaluations) },
-                    Evaluation = { GetDefaultEvaluation(chainStep.NextInfo.Word, chainStep.LettersInfo) }
+                    Evaluation =
+                    {
+                        GetDefaultEvaluation(chainStep.NextInfo.Word, chainStep.LettersInfo),
+                    },
                 };
 
-                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Forward"))
-                {
-                    CallbackData = GameStateSerializer.Save(nextGameState)
-                });
+                buttonRowTwo.Add(
+                    new InlineKeyboardButton(l10n.GetResourceString("Forward"))
+                    {
+                        CallbackData = GameStateSerializer.Save(nextGameState),
+                    }
+                );
 
-                // Letter buttons                
+                // Letter buttons
                 GameState letterGameState = gameState.Clone();
                 for (int i = 0; i < letterGameState.Evaluation.Count; ++i)
                 {
                     letterGameState.Evaluation[i] = Next(letterGameState.Evaluation[i]);
-                    buttonRowOne.Add(MakeButton(lastWord[i], gameState.Evaluation[i], GameStateSerializer.Save(letterGameState)));
+                    buttonRowOne.Add(
+                        MakeButton(
+                            lastWord[i],
+                            gameState.Evaluation[i],
+                            GameStateSerializer.Save(letterGameState)
+                        )
+                    );
                     letterGameState.Evaluation[i] = Prev(letterGameState.Evaluation[i]);
                 }
             }
@@ -424,18 +571,22 @@ namespace FiveLetters
                 GameState sealedGameState = gameState.Clone();
                 sealedGameState.Status = Status.ToBeSealed;
 
-                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Seal"))
-                {
-                    CallbackData = GameStateSerializer.Save(sealedGameState)
-                });
+                buttonRowTwo.Add(
+                    new InlineKeyboardButton(l10n.GetResourceString("Seal"))
+                    {
+                        CallbackData = GameStateSerializer.Save(sealedGameState),
+                    }
+                );
 
                 GameState deletedGameState = gameState.Clone();
                 deletedGameState.Status = Status.ToBeDeleted;
 
-                buttonRowTwo.Add(new InlineKeyboardButton(l10n.GetResourceString("Delete"))
-                {
-                    CallbackData = GameStateSerializer.Save(deletedGameState)
-                });
+                buttonRowTwo.Add(
+                    new InlineKeyboardButton(l10n.GetResourceString("Delete"))
+                    {
+                        CallbackData = GameStateSerializer.Save(deletedGameState),
+                    }
+                );
             }
 
             if (buttonRowOne.Count > 0)
@@ -448,7 +599,10 @@ namespace FiveLetters
                 buttons.Add(buttonRowTwo);
             }
 
-            return new Msg(textBuilder.ToString(), buttons.Count > 0 ? new InlineKeyboardMarkup(buttons) : null);
+            return new Msg(
+                textBuilder.ToString(),
+                buttons.Count > 0 ? new InlineKeyboardMarkup(buttons) : null
+            );
         }
 
         private async Task ProcessStartAsync(long chatId, CancellationToken cancellationToken)
@@ -456,18 +610,32 @@ namespace FiveLetters
             Msg? msg = MakeMsg(MakeInitialGameState(), chatId);
             if (msg != null)
             {
-                await client.SendMessageAsync(chatId, text: msg.Text, replyMarkup: msg.Markup, parseMode: "MarkdownV2",
-                    cancellationToken: cancellationToken);
+                await client.SendMessageAsync(
+                    chatId,
+                    text: msg.Text,
+                    replyMarkup: msg.Markup,
+                    parseMode: "MarkdownV2",
+                    cancellationToken: cancellationToken
+                );
             }
         }
 
         private void Log(string message, long chatId, int? messageId = null)
         {
-            string chatIdHash = Convert.ToBase64String(SHA3_256.HashData(BitConverter.GetBytes(chatId)));
+            string chatIdHash = Convert.ToBase64String(
+                SHA3_256.HashData(BitConverter.GetBytes(chatId))
+            );
             if (messageId.HasValue)
             {
-                string messageIdHash = Convert.ToBase64String(SHA3_256.HashData(BitConverter.GetBytes(messageId.Value)));
-                logger.LogDebug("{chatIdHash}_{messageIdHash}: {message}", chatIdHash, messageIdHash, message);
+                string messageIdHash = Convert.ToBase64String(
+                    SHA3_256.HashData(BitConverter.GetBytes(messageId.Value))
+                );
+                logger.LogDebug(
+                    "{chatIdHash}_{messageIdHash}: {message}",
+                    chatIdHash,
+                    messageIdHash,
+                    message
+                );
             }
             else
             {
@@ -481,21 +649,46 @@ namespace FiveLetters
             StringBuilder stringBuilder = new(helpString.Get());
             stringBuilder.Append('\n');
             string formatTemplate = l10n.GetResourceString("AttemptCountSlashWordsCount");
-            stringBuilder.AppendJoin('\n', stat.Select(attemptCountToWordCount => string.Format(cultureInfo,
-                formatTemplate, attemptCountToWordCount.Key, attemptCountToWordCount.Value)));
+            stringBuilder.AppendJoin(
+                '\n',
+                stat.Select(attemptCountToWordCount =>
+                    string.Format(
+                        cultureInfo,
+                        formatTemplate,
+                        attemptCountToWordCount.Key,
+                        attemptCountToWordCount.Value
+                    )
+                )
+            );
             stringBuilder.Append('\n');
-            stringBuilder.AppendFormat(cultureInfo, l10n.GetResourceString("VocabularySize"), stat.Values.Sum());
+            stringBuilder.AppendFormat(
+                cultureInfo,
+                l10n.GetResourceString("VocabularySize"),
+                stat.Values.Sum()
+            );
             stringBuilder.Append('\n');
-            stringBuilder.AppendFormat(cultureInfo, l10n.GetResourceString("Feedback"), config.FeedbackEmail!);
-            await client.SendMessageAsync(chatId, text: stringBuilder.ToString(), parseMode: "MarkdownV2",
-                cancellationToken: cancellationToken);
+            stringBuilder.AppendFormat(
+                cultureInfo,
+                l10n.GetResourceString("Feedback"),
+                config.FeedbackEmail!
+            );
+            await client.SendMessageAsync(
+                chatId,
+                text: stringBuilder.ToString(),
+                parseMode: "MarkdownV2",
+                cancellationToken: cancellationToken
+            );
         }
 
         public static Task RunAsync(string[] args)
         {
-            return Host.CreateDefaultBuilder(args).ConfigureServices(services =>
-                services.AddSystemd().AddBotCommonServices().AddHostedService<BotApp>()
-            ).UseSystemd().Build().RunAsync();
+            return Host.CreateDefaultBuilder(args)
+                .ConfigureServices(services =>
+                    services.AddSystemd().AddBotCommonServices().AddHostedService<BotApp>()
+                )
+                .UseSystemd()
+                .Build()
+                .RunAsync();
         }
     }
 }

@@ -10,7 +10,11 @@ namespace FiveLetters
 
         private long count = 0;
 
-        internal static long Generate(IReadOnlyList<string> words, int tupleSize, StreamWriter streamWriter)
+        internal static long Generate(
+            IReadOnlyList<string> words,
+            int tupleSize,
+            StreamWriter streamWriter
+        )
         {
             TupleGenerator tupleGenerator = new(streamWriter, words);
             tupleGenerator.Make(tupleSize, 0);
@@ -35,7 +39,10 @@ namespace FiveLetters
 
             for (int i = index; i + tupleSize - 1 < words.Count; ++i)
             {
-                if (words[i].Concat(chain.SelectMany(word => word)).Distinct().Count() < length + words[i].Length)
+                if (
+                    words[i].Concat(chain.SelectMany(word => word)).Distinct().Count()
+                    < length + words[i].Length
+                )
                 {
                     continue;
                 }

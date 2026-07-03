@@ -28,7 +28,10 @@ namespace FiveLetters
             stack.RemoveAt(stack.Count - 1);
         }
 
-        private static void HandleChain(ImmutableList<string> chain, SortedDictionary<int, int> result)
+        private static void HandleChain(
+            ImmutableList<string> chain,
+            SortedDictionary<int, int> result
+        )
         {
             if (chain.Count == 0)
             {
@@ -59,7 +62,8 @@ namespace FiveLetters
             return result;
         }
 
-        private static void IncreaseOrSetDefault(SortedDictionary<int, int> map, int key) {
+        private static void IncreaseOrSetDefault(SortedDictionary<int, int> map, int key)
+        {
             if (map.TryGetValue(key, out int count))
             {
                 map[key] = ++count;

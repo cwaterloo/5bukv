@@ -24,6 +24,7 @@ namespace FiveLetters
         {
             internal int Letter { get; set; }
             internal bool Interpretation { get; set; }
+
             internal readonly bool MatchLetter(int letter) => letter == Letter == Interpretation;
         }
 
@@ -100,8 +101,16 @@ namespace FiveLetters
             }
         }
 
-        private static long GetMatchWordCount(State firstState, State secondState, IReadOnlyList<Word> words, Word word,
-            Word firstGuess, Word secondGuess, long current, long observedMin)
+        private static long GetMatchWordCount(
+            State firstState,
+            State secondState,
+            IReadOnlyList<Word> words,
+            Word word,
+            Word firstGuess,
+            Word secondGuess,
+            long current,
+            long observedMin
+        )
         {
             long metric = current;
             long n = 0;
@@ -122,8 +131,14 @@ namespace FiveLetters
             return metric;
         }
 
-        private static long GetMatchWordCount(State state, IReadOnlyList<Word> words, Word word, Word guess,
-            long current, long observedMin)
+        private static long GetMatchWordCount(
+            State state,
+            IReadOnlyList<Word> words,
+            Word word,
+            Word guess,
+            long current,
+            long observedMin
+        )
         {
             long metric = current;
             long n = 0;
@@ -143,9 +158,12 @@ namespace FiveLetters
             return metric;
         }
 
-        private static void ValidateLength(IReadOnlyList<Word> words, int length, int alphabetPower) {
-            foreach (Word word in words) {
-                if (word.Count != length) {
+        private static void ValidateLength(IReadOnlyList<Word> words, int length, int alphabetPower)
+        {
+            foreach (Word word in words)
+            {
+                if (word.Count != length)
+                {
                     throw new InvalidOperationException("Not all the words of the same length.");
                 }
                 foreach (int letter in word)
@@ -158,7 +176,11 @@ namespace FiveLetters
             }
         }
 
-        public static Word GetCandidate(IReadOnlyList<Word> words, IReadOnlyList<Word> attackWords, int alphabetPower)
+        public static Word GetCandidate(
+            IReadOnlyList<Word> words,
+            IReadOnlyList<Word> attackWords,
+            int alphabetPower
+        )
         {
             if (words.Count == 1)
             {
@@ -191,7 +213,14 @@ namespace FiveLetters
                 long currentMetric = 0;
                 foreach (Word word in words)
                 {
-                    currentMetric = GetMatchWordCount(state, words, word, attackWords[i], currentMetric, minMetric);
+                    currentMetric = GetMatchWordCount(
+                        state,
+                        words,
+                        word,
+                        attackWords[i],
+                        currentMetric,
+                        minMetric
+                    );
                     if (currentMetric > minMetric)
                     {
                         break;
@@ -247,8 +276,11 @@ namespace FiveLetters
             return letterCount >= 2 * first.Count;
         }
 
-        public static (Word firstGuess, Word secondGuess) GetCandidate2(IReadOnlyList<Word> words,
-            IReadOnlyList<Word> attackWords, int alphabetPower)
+        public static (Word firstGuess, Word secondGuess) GetCandidate2(
+            IReadOnlyList<Word> words,
+            IReadOnlyList<Word> attackWords,
+            int alphabetPower
+        )
         {
             if (words.Count == 1)
             {
@@ -287,7 +319,10 @@ namespace FiveLetters
                 }
             }
 
-            (Word firstCandidate, Word secondCandidate) candidateMin = (attackWords[0], attackWords[0]);
+            (Word firstCandidate, Word secondCandidate) candidateMin = (
+                attackWords[0],
+                attackWords[0]
+            );
             long count = 0;
             State firstState = new(words[0].Count, alphabetPower);
             State secondState = new(words[0].Count, alphabetPower);
@@ -308,8 +343,16 @@ namespace FiveLetters
                     long currentMetric = 0;
                     foreach (Word word in words)
                     {
-                        currentMetric = GetMatchWordCount(firstState, secondState, words, word,
-                            attackWords[i], attackWords[j], currentMetric, minMetric);
+                        currentMetric = GetMatchWordCount(
+                            firstState,
+                            secondState,
+                            words,
+                            word,
+                            attackWords[i],
+                            attackWords[j],
+                            currentMetric,
+                            minMetric
+                        );
                         if (currentMetric > minMetric)
                         {
                             break;

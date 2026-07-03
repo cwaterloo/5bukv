@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>FiveLetters</RootNamespace>
@@ -24,8 +23,8 @@
     <Protobuf Include="**\*.proto" />
   </ItemGroup>
 
-   <ItemGroup>
-        <EmbeddedResource Include="Resources\Strings.ru-RU.restext" />
-        <EmbeddedResource Include="Resources\Strings.restext" />
-   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Strings.ru-RU.restext" />
+    <EmbeddedResource Include="Resources\Strings.restext" />
+  </ItemGroup>
 </Project>

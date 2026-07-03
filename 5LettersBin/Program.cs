@@ -1,5 +1,4 @@
-﻿
-namespace FiveLetters
+﻿namespace FiveLetters
 {
     internal class Program
     {

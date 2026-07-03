@@ -3,10 +3,10 @@ using System.Globalization;
 using System.Net;
 using System.Resources;
 using System.Text;
-using Protobuf.Text;
 using FiveLetters.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Protobuf.Text;
 using Telegram.BotAPI;
 
 namespace FiveLetters
@@ -15,7 +15,9 @@ namespace FiveLetters
     {
         private static ReadOnlyTreeRoot GetTreeRoot(IServiceProvider serviceProvider)
         {
-            return ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(serviceProvider.GetService<BotConfig>()!.TreeFilename!));
+            return ReadOnlyTreeRoot.ValidateAndConvert(
+                TreeSerializer.Load(serviceProvider.GetService<BotConfig>()!.TreeFilename!)
+            );
         }
 
         private static TelegramBotClient GetTelegramBotClient(IServiceProvider serviceProvider)
@@ -29,7 +31,7 @@ namespace FiveLetters
             SocketsHttpHandler handler = new()
             {
                 Proxy = new WebProxy(config.ProxyUrl),
-                UseProxy = true
+                UseProxy = true,
             };
 
             return new(new TelegramBotClientOptions(config.ApiToken!, new HttpClient(handler)));
@@ -49,7 +51,9 @@ namespace FiveLetters
 
         private static ImmutableSortedDictionary<int, int> GetStat(IServiceProvider serviceProvider)
         {
-            return StatCollector.GetStat(serviceProvider.GetService<ReadOnlyTreeRoot>()!).ToImmutableSortedDictionary();
+            return StatCollector
+                .GetStat(serviceProvider.GetService<ReadOnlyTreeRoot>()!)
+                .ToImmutableSortedDictionary();
         }
 
         private static string ConvertHelp(string[] helpLines)
@@ -81,15 +85,25 @@ namespace FiveLetters
 
         private static MemoizedValue<string> GetHelp(IServiceProvider serviceProvider)
         {
-            return new(() => ConvertHelp(File.ReadAllLines(serviceProvider.GetService<BotConfig>()!.HelpTextFilePath!,
-                Encoding.UTF8)), TimeSpan.FromMinutes(1));
+            return new(
+                () =>
+                    ConvertHelp(
+                        File.ReadAllLines(
+                            serviceProvider.GetService<BotConfig>()!.HelpTextFilePath!,
+                            Encoding.UTF8
+                        )
+                    ),
+                TimeSpan.FromMinutes(1)
+            );
         }
 
         public static IServiceCollection AddBotCommonServices(this IServiceCollection services)
         {
             services.AddSingleton(GetTreeRoot);
             services.AddSingleton(GetTelegramBotClient);
-            services.AddSingleton(new ResourceManager("FiveLetters.Resources.Strings", typeof(BotApp).Assembly));
+            services.AddSingleton(
+                new ResourceManager("FiveLetters.Resources.Strings", typeof(BotApp).Assembly)
+            );
             services.AddSingleton(GetCultureInfo);
             services.AddSingleton<L10n>();
             services.AddSingleton(GetConfig);

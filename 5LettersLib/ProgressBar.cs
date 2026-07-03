@@ -50,8 +50,15 @@ namespace FiveLetters
                 state = 0;
             }
 
-            Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "[{0}] {1}: {2}.", StateChar,
-                message, DateTime.UtcNow + stopwatch.Elapsed * (1 / done - 1)));
+            Console.WriteLine(
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "[{0}] {1}: {2}.",
+                    StateChar,
+                    message,
+                    DateTime.UtcNow + stopwatch.Elapsed * (1 / done - 1)
+                )
+            );
         }
     }
 }

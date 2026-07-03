@@ -10,7 +10,12 @@ namespace FiveLetters
             public List<string> AttackWords { get; init; } = [];
             public List<string> GlobalWords { get; init; } = [];
         };
-        private readonly record struct LetterAndColors(char Letter, ConsoleColor ForegroundColor, ConsoleColor BackgroundColor);
+
+        private readonly record struct LetterAndColors(
+            char Letter,
+            ConsoleColor ForegroundColor,
+            ConsoleColor BackgroundColor
+        );
 
         private static WordCollection LoadWords(IEnumerable<string> filenames)
         {
@@ -50,7 +55,7 @@ namespace FiveLetters
             return new WordCollection
             {
                 AttackWords = [.. (attackWords ?? []).Order()],
-                GlobalWords = [.. globalWords.Order()]
+                GlobalWords = [.. globalWords.Order()],
             };
         }
 
@@ -121,8 +126,13 @@ namespace FiveLetters
         private static void PrintEnteredState(string mask, string guess)
         {
             Console.Write("Entered state: ");
-            foreach (LetterAndColors letterAndColors in guess.Zip(mask)
-                .Select(letterCharTuple => GetCharColor(letterCharTuple.First, letterCharTuple.Second)))
+            foreach (
+                LetterAndColors letterAndColors in guess
+                    .Zip(mask)
+                    .Select(letterCharTuple =>
+                        GetCharColor(letterCharTuple.First, letterCharTuple.Second)
+                    )
+            )
             {
                 Console.ForegroundColor = letterAndColors.ForegroundColor;
                 Console.BackgroundColor = letterAndColors.BackgroundColor;
@@ -137,12 +147,18 @@ namespace FiveLetters
             do
             {
                 string matchPattern = new('y', guess.Length);
-                Console.Write("Enter state (e.g gwwwh, g - not present, w - wrong place, " +
-                    "y - correct place; {0} - to exit): ", matchPattern);
+                Console.Write(
+                    "Enter state (e.g gwwwh, g - not present, w - wrong place, "
+                        + "y - correct place; {0} - to exit): ",
+                    matchPattern
+                );
                 string enteredValue = Console.ReadLine() ?? "";
                 try
                 {
-                    Evaluation? state = enteredValue == matchPattern ? null : new Evaluation(guess, Evaluation.GetEvaluationTypes(enteredValue));
+                    Evaluation? state =
+                        enteredValue == matchPattern
+                            ? null
+                            : new Evaluation(guess, Evaluation.GetEvaluationTypes(enteredValue));
                     PrintEnteredState(enteredValue, guess);
                     Console.WriteLine();
                     return state?.Pack();
@@ -174,8 +190,10 @@ namespace FiveLetters
                 }
                 if (!localTree.Edges.TryGetValue(state.Value, out localTree) || localTree == null)
                 {
-                    Console.WriteLine("No words left. It means that one of the previous " +
-                        "mask was entered incorrectly.");
+                    Console.WriteLine(
+                        "No words left. It means that one of the previous "
+                            + "mask was entered incorrectly."
+                    );
                     break;
                 }
             } while (attempt < 6);
@@ -183,12 +201,20 @@ namespace FiveLetters
 
         private static void MakeGraph(string outputFilename, WordCollection words, bool dual)
         {
-            TreeSerializer.Save(TreeGenerator.Get(words.GlobalWords, words.AttackWords, [], dual), outputFilename);
+            TreeSerializer.Save(
+                TreeGenerator.Get(words.GlobalWords, words.AttackWords, [], dual),
+                outputFilename
+            );
         }
 
         private static void MakeTuples(string outputFilename, WordCollection words)
         {
-            using FileStream fileStream = new(outputFilename, FileMode.Create, FileAccess.Write, FileShare.Read);
+            using FileStream fileStream = new(
+                outputFilename,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.Read
+            );
             using GZipStream gZipStream = new(fileStream, CompressionLevel.SmallestSize);
             using StreamWriter streamWriter = new(gZipStream, Encoding.UTF8);
             long count = TupleGenerator.Generate(words.AttackWords, 4, streamWriter);
@@ -202,12 +228,17 @@ namespace FiveLetters
             Console.WriteLine();
             Console.WriteLine("\t$ {0} stats /path/to/nav_graph", exeName);
             Console.WriteLine("\t\tCollects and shows stats. The navigation graph could");
-            Console.WriteLine("\t\tbe obtained from a dictionary with the `graph` command (see below).");
+            Console.WriteLine(
+                "\t\tbe obtained from a dictionary with the `graph` command (see below)."
+            );
             Console.WriteLine();
             Console.WriteLine("\t$ {0} interactive /path/to/nav_graph", exeName);
             Console.WriteLine("\t\tStarts interactive mode to play the game.");
             Console.WriteLine();
-            Console.WriteLine("\t$ {0} graph true|false /path/to/nav_graph /path/to/dictionary ...", exeName);
+            Console.WriteLine(
+                "\t$ {0} graph true|false /path/to/nav_graph /path/to/dictionary ...",
+                exeName
+            );
             Console.WriteLine("\t\tMakes the navigation graph out of the dictionary.");
             Console.WriteLine();
             Console.WriteLine("The '/path/to/dictionary' is path to a file that contains");
@@ -248,15 +279,27 @@ namespace FiveLetters
 
         private static void PrintTreeRoot(ReadOnlyTreeRoot root, string filename)
         {
-            using StreamWriter streamWriter = new(filename, new UTF8Encoding(false),
-                new FileStreamOptions { Access = FileAccess.Write, Share = FileShare.None, Mode = FileMode.Create });
+            using StreamWriter streamWriter = new(
+                filename,
+                new UTF8Encoding(false),
+                new FileStreamOptions
+                {
+                    Access = FileAccess.Write,
+                    Share = FileShare.None,
+                    Mode = FileMode.Create,
+                }
+            );
             PrintTree(root.Tree, 0, streamWriter);
         }
 
         public static void Run(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            if (args.Length < 2 || args[0] == "graph" && args.Length < 4 || (args[0] == "tuple" || args[0] == "print") && args.Length < 3)
+            if (
+                args.Length < 2
+                || args[0] == "graph" && args.Length < 4
+                || (args[0] == "tuple" || args[0] == "print") && args.Length < 3
+            )
             {
                 ShowHelpAndTerminate();
             }
@@ -267,10 +310,15 @@ namespace FiveLetters
                     CollectStats(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])));
                     break;
                 case "interactive":
-                    PlayInteractiveGame(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])));
+                    PlayInteractiveGame(
+                        ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1]))
+                    );
                     break;
                 case "print":
-                    PrintTreeRoot(ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])), args[2]);
+                    PrintTreeRoot(
+                        ReadOnlyTreeRoot.ValidateAndConvert(TreeSerializer.Load(args[1])),
+                        args[2]
+                    );
                     break;
                 case "graph":
                     MakeGraph(args[2], LoadWords(args[3..]), bool.Parse(args[1]));
