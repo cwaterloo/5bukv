@@ -28,7 +28,8 @@ namespace FiveLetters
         IImmutableList<string> WordChain,
         LettersInfo LettersInfo,
         SessionStatus SessionStatus,
-        NextInfo NextInfo
+        NextInfo NextInfo,
+        int WordsUnder
     );
 
     internal enum SessionStatus
@@ -409,7 +410,8 @@ namespace FiveLetters
                     correctLetters.ToImmutableDictionary()
                 ),
                 GetSessionStatus(lastTree.Edges.Count == 0, noWordsLeft),
-                new NextInfo(word, packedEvaluations)
+                new NextInfo(word, packedEvaluations),
+                noWordsLeft ? 0 : lastTree.WordsUnder
             );
         }
 
@@ -497,6 +499,13 @@ namespace FiveLetters
                     cultureInfo,
                     l10n.GetResourceString("WordChainTemplate"),
                     string.Join(" \\-\\> ", chainStep.WordChain)
+                )
+            );
+            textBuilder.Append(
+                string.Format(
+                    cultureInfo,
+                    l10n.GetResourceString("CandidateCountTemplate"),
+                    chainStep.WordsUnder
                 )
             );
             textBuilder.Append(

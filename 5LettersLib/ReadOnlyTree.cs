@@ -56,7 +56,11 @@ namespace FiveLetters
                 subtrees.Add(state, Convert(subtree));
             }
 
-            return new ReadOnlyTree(tree.Word, subtrees.AsReadOnly());
+            return new ReadOnlyTree(
+                tree.Word,
+                subtrees.AsReadOnly(),
+                Math.Max(1, subtrees.Values.Sum(tree => tree.WordsUnder))
+            );
         }
 
         private static void ValidateStateValues(Tree tree)
@@ -103,5 +107,9 @@ namespace FiveLetters
         public ReadOnlyTree Tree { get; init; }
     }
 
-    public sealed record ReadOnlyTree(string Word, IReadOnlyDictionary<int, ReadOnlyTree> Edges);
+    public sealed record ReadOnlyTree(
+        string Word,
+        IReadOnlyDictionary<int, ReadOnlyTree> Edges,
+        int WordsUnder
+    );
 }

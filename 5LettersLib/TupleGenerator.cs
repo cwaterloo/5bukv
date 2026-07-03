@@ -35,7 +35,7 @@ namespace FiveLetters
                 return;
             }
 
-            int length = chain.Select(word => word.Length).Sum();
+            int length = chain.Sum(word => word.Length);
 
             for (int i = index; i + tupleSize - 1 < words.Count; ++i)
             {

@@ -178,7 +178,11 @@ namespace FiveLetters
             {
                 string guess = localTree.Word;
                 ++attempt;
-                Console.Write("Attempt: {0}, Guess: ", attempt);
+                Console.Write(
+                    "Attempt: {0}, Number of candidates: {1}, Guess: ",
+                    attempt,
+                    localTree.WordsUnder
+                );
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write(guess);
                 Console.ResetColor();
@@ -269,7 +273,7 @@ namespace FiveLetters
         private static void PrintTree(ReadOnlyTree tree, int level, StreamWriter streamWriter)
         {
             string indent = new(' ', level * 2);
-            streamWriter.WriteLine("{0}{1}", indent, tree.Word);
+            streamWriter.WriteLine("{0}{1} {2}", indent, tree.Word, tree.WordsUnder);
             foreach ((int packedEvaluation, ReadOnlyTree subtree) in tree.Edges)
             {
                 streamWriter.WriteLine(" {0}{1}", indent, packedEvaluation);

@@ -33,7 +33,7 @@ Execute the following command to start the process. You can any number of dictio
 ```
 
 Note: you might not want to waste the time to find the first candidate(s). Replace the `[]` in
-[ConsoleApp.cs](https://github.com/cwaterloo/5bukv/blob/main/5LettersLib/ConsoleApp.cs#L186) with either and build the project again.
+[ConsoleApp.cs](https://github.com/cwaterloo/5bukv/blob/main/5LettersLib/ConsoleApp.cs#L205) with either and build the project again.
 
 * `["колит", "серна"]` (for russian words, two first candidates)
 * `["норка"]` (for russian words, one first candidate)

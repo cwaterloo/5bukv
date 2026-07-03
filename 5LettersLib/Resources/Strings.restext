@@ -16,3 +16,4 @@ VocabularySize=Vocabulary size \\(number of words\\): {0}\\.
 Feedback=Send feedback to {0}\\.
 Seal=Seal
 Delete=Delete
+CandidateCountTemplate=*Number of candidates:* {0}\\.
