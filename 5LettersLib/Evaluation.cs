@@ -172,17 +172,22 @@ namespace FiveLetters
             return result;
         }
 
-        public static Evaluation Unpack(int value, string guess)
+        public static List<EvaluationType> Unpack(int value, int length)
         {
             int count = Enum.GetValues<EvaluationType>().Length;
             List<EvaluationType> evaluationTypes = [];
-            for (int i = 0; i < guess.Length; ++i)
+            for (int i = 0; i < length; ++i)
             {
                 evaluationTypes.Add((EvaluationType)(value % count));
                 value /= count;
             }
             evaluationTypes.Reverse();
-            return new(guess, evaluationTypes);
+            return evaluationTypes;
+        }
+
+        public static Evaluation Unpack(int value, string guess)
+        {
+            return new(guess, Unpack(value, guess.Length));
         }
 
         internal static Evaluation FromDataEvaluations(
